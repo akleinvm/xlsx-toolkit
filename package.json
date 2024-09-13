@@ -1,0 +1,33 @@
+{
+  "name": "xlsx-toolkit",
+  "version": "1.0.0",
+  "description": "A powerful and flexible TypeScript library for loading, parsing, and modifying XLSX (Excel) files. Ideal for developers who need to manipulate Excel files in Node.js or the browser.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.8",
+    "@types/node": "^22.5.4",
+    "tsup": "^8.2.4",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.0"
+  },
+  "keywords": ["typescript", "library"],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akleinvm/xlsx-toolkit"
+  },
+  "bugs": {
+    "url": "https://github.com/akleinvm/xlsx-toolkit/issues"
+  },
+  "homepage": "https://github.com/akleinvm/xlsx-toolkit#readme"
+}
