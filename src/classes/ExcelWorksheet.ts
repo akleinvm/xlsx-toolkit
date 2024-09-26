@@ -1,7 +1,8 @@
 import { CellObject } from "../types";
-import { ExcelColumnConverter } from "./ExcelColumnConverter";
+import ExcelColumnConverter from "./ExcelColumnConverter";
+import ExcelSharedStrings from "./ExcelSharedStrings";
 
-export class ExcelWorksheet {
+export default class ExcelWorksheet {
   private xmlDoc!: Document;
   private worksheetElement!: Element;
   private namespace!: string;
@@ -72,6 +73,34 @@ export class ExcelWorksheet {
         rowElement.appendChild(cellElement);
       }
     }
+  }
+
+  public getRange(rangeStart: string, rangeEnd: string): Array<Array<string>> {
+    const startIndex = ExcelColumnConverter.cellRefToIndex(rangeStart);
+    const minRowNo = startIndex.RowIndex;
+    const minColumnNo = startIndex.ColumnIndex;
+
+    const endIndex = ExcelColumnConverter.cellRefToIndex(rangeEnd);
+    const maxRowNo = endIndex.RowIndex;
+    const maxColumnNo = endIndex.ColumnIndex;
+
+    let output: string[][] = [];
+    for (let rowNo = minRowNo; rowNo <= maxRowNo; rowNo++) {
+      const currentRow = this.rowsMap.get(rowNo);
+      for (let columnNo = minColumnNo; columnNo <= maxRowNo; columnNo++) {
+        const currentColumnRef = ExcelColumnConverter.numberToColumn(columnNo);
+        const currentCell = this.cellsMap.get(currentColumnRef + columnNo.toString());
+
+        let cellValue = currentCell?.getElementsByTagName('v')[0].textContent ?? '';
+        const cellType = currentCell?.getAttribute('t');
+        if(cellType === 's') cellValue = ExcelSharedStrings.getIndexString(Number(cellValue));
+        
+        output[rowNo][columnNo] = cellValue;
+
+      }
+    }
+    
+    return output;
   }
 
   public toString(): string {
