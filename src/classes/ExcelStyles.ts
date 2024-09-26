@@ -1,5 +1,5 @@
 
-export class ExcelStyles {
+export default class ExcelStyles {
     private xmlDocument!: Document;
     private styleSheetElement!: Element;
     private namespace!: string;

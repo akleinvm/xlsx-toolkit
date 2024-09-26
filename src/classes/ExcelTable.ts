@@ -1,7 +1,7 @@
 import { CellIndex } from "../types";
-import { ExcelColumnConverter } from "./ExcelColumnConverter";
+import ExcelColumnConverter from "./ExcelColumnConverter";
 
-export class ExcelTable {
+export default class ExcelTable {
     private xmlDocument!: Document;
     private tableElement!: Element;
     public minCellIndex!: CellIndex;

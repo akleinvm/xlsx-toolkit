@@ -1,6 +1,6 @@
 import { CellIndex } from "../types";
 
-export class ExcelColumnConverter {
+export default class ExcelColumnConverter {
     private static columnToNumberMap: Map<string, number> = new Map();
     private static numberToColumnMap: Map<number, string> = new Map();
   
