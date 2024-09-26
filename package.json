@@ -31,7 +31,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/akleinvm/xlsx-toolkit"
+    "url": "git+https://github.com/akleinvm/xlsx-toolkit.git"
   },
   "bugs": {
     "url": "https://github.com/akleinvm/xlsx-toolkit/issues"
