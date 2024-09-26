@@ -3,18 +3,21 @@ export default class ExcelSharedStrings {
     private static sstElement: Element;
     private static namespace: string;
     private static stringsMap: Map<string, number>;
+    private static numbersMap: Map<number, string>;
 
     public fromXML(xmlString: string) {
         ExcelSharedStrings.xmlDocument = new DOMParser().parseFromString(xmlString, 'text/xml');
         ExcelSharedStrings.sstElement = ExcelSharedStrings.xmlDocument.getElementsByTagName('sst')[0];
         ExcelSharedStrings.namespace = ExcelSharedStrings.sstElement.getAttribute('xmlns') ?? '';
         ExcelSharedStrings.stringsMap = new Map();
+        ExcelSharedStrings.numbersMap = new Map();
         
         const siElements = ExcelSharedStrings.sstElement.getElementsByTagName('si');
         for(let i = 0; i < siElements.length; i++) {
             const tElement = siElements[i].getElementsByTagName('t')[0];
             if(tElement && tElement.textContent) {
-                ExcelSharedStrings.stringsMap.set(tElement.textContent, i)
+                ExcelSharedStrings.stringsMap.set(tElement.textContent, i);
+                ExcelSharedStrings.numbersMap.set(i, tElement.textContent);
             }
         }
     }
@@ -32,6 +35,7 @@ export default class ExcelSharedStrings {
         if(!stringIndex) {
             stringIndex = ExcelSharedStrings.stringsMap.size;
             ExcelSharedStrings.stringsMap.set(string, ExcelSharedStrings.stringsMap.size);
+            ExcelSharedStrings.numbersMap.set(ExcelSharedStrings.stringsMap.size, string);
             const siElement = this.xmlDocument.createElementNS(this.namespace, 'si',);
             const tElement = this.xmlDocument.createElementNS(this.namespace, 't');
             tElement.textContent = string;
@@ -39,5 +43,9 @@ export default class ExcelSharedStrings {
             this.sstElement.appendChild(siElement);
         }
         return stringIndex
+    }
+
+    public static getIndexString (index: number): string {
+        return ExcelSharedStrings.numbersMap.get(index) ?? '';
     }
 }
