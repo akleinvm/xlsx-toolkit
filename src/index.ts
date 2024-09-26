@@ -1,3 +1,3 @@
-export function greet(name: string): string {
-    return `Hello, ${name}!`;
-}
+import ExcelDocument from "./classes/ExcelDocument";
+
+export default ExcelDocument;
