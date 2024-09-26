@@ -33,13 +33,14 @@ export default class ExcelDocument {
         this.styles.fromXML(xmlStyles);
     }
 
-    public getRange (sheetNo: number, startCell: string, endCell: string) {
-        //how can I get the range??? 1. get the worksheet how??
+    public getRange (sheetNo: number, startCell: string, endCell: string): string[][] {
         console.log(`Parsing sheet${sheetNo}.xml...`);
         const xmlWorksheet = this.files.get(`xl/worksheets/sheet${sheetNo}.xml`) ?? "";
         if(xmlWorksheet === '') throw new Error('worksheet is null or undefined');
         const worksheet = new ExcelWorksheet();
         worksheet.fromXML(xmlWorksheet);
+
+        return worksheet.getRange(startCell, endCell);
 
     }
     
