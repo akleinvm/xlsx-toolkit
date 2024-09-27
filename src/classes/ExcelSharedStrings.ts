@@ -1,3 +1,5 @@
+import jsDOM from './SharedParserSerializer';
+
 export default class ExcelSharedStrings {
     private static xmlDocument: XMLDocument;
     private static sstElement: Element;
@@ -6,7 +8,7 @@ export default class ExcelSharedStrings {
     private static numbersMap: Map<number, string>;
 
     public fromXML(xmlString: string) {
-        ExcelSharedStrings.xmlDocument = new DOMParser().parseFromString(xmlString, 'text/xml');
+        ExcelSharedStrings.xmlDocument = jsDOM.parser.parseFromString(xmlString, 'text/xml');
         ExcelSharedStrings.sstElement = ExcelSharedStrings.xmlDocument.getElementsByTagName('sst')[0];
         ExcelSharedStrings.namespace = ExcelSharedStrings.sstElement.getAttribute('xmlns') ?? '';
         ExcelSharedStrings.stringsMap = new Map();
@@ -25,8 +27,7 @@ export default class ExcelSharedStrings {
     public toString(): string {
         ExcelSharedStrings.sstElement.setAttribute('uniqueCount', ExcelSharedStrings.stringsMap.size.toString());
 
-        const xmlSerializer = new XMLSerializer();
-        return xmlSerializer.serializeToString(ExcelSharedStrings.xmlDocument);
+        return jsDOM.serializer.serializeToString(ExcelSharedStrings.xmlDocument);
     }
 
     public static getStringIndex(string: string): number {

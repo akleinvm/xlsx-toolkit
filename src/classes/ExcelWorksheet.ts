@@ -1,6 +1,7 @@
 import { CellObject } from "../types";
 import ExcelColumnConverter from "./ExcelColumnConverter";
 import ExcelSharedStrings from "./ExcelSharedStrings";
+import jsDOM from './SharedParserSerializer';
 
 export default class ExcelWorksheet {
   private xmlDoc!: Document;
@@ -12,7 +13,7 @@ export default class ExcelWorksheet {
   private cellsMap!: Map<string, Element>;
 
   public fromXML(xmlString: string) {
-    this.xmlDoc = new DOMParser().parseFromString(xmlString, "text/xml");
+    this.xmlDoc = jsDOM.parser.parseFromString(xmlString, "text/xml");
 
     this.worksheetElement = this.xmlDoc.getElementsByTagName('worksheet')[0];
     this.namespace = this.worksheetElement.getAttribute('xmlns') ?? "";
@@ -84,7 +85,7 @@ export default class ExcelWorksheet {
     const maxRowNo = endIndex.RowIndex;
     const maxColumnNo = endIndex.ColumnIndex;
 
-    let output: string[][] = [];
+    const output: string[][] = [];
     for (let rowNo = minRowNo; rowNo <= maxRowNo; rowNo++) {
       const currentRow = this.rowsMap.get(rowNo);
       for (let columnNo = minColumnNo; columnNo <= maxRowNo; columnNo++) {
@@ -104,6 +105,6 @@ export default class ExcelWorksheet {
   }
 
   public toString(): string {
-    return new XMLSerializer().serializeToString(this.xmlDoc);
+    return jsDOM.serializer.serializeToString(this.xmlDoc);
   }
 }

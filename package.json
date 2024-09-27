@@ -36,6 +36,8 @@
   },
   "homepage": "https://github.com/akleinvm/xlsx-toolkit#readme",
   "dependencies": {
+    "@types/jsdom": "^21.1.7",
+    "jsdom": "^25.0.1",
     "jszip": "^3.10.1"
   }
 }
