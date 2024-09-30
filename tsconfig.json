@@ -3,8 +3,8 @@
     "exclude": ["**/*.test.ts"],
     "compilerOptions": {
       "forceConsistentCasingInFileNames": true,
-      "module": "esnext",
-      "target": "esnext",
+      "module": "ESNext",
+      "target": "ES6",
       "lib": ["esnext"],
       "declaration": true,
       "strict": true,

@@ -1,6 +1,5 @@
 import { CellIndex } from "../types";
 import ExcelColumnConverter from "./ExcelColumnConverter";
-import jsDOM from './SharedParserSerializer';
 
 export default class ExcelTable {
     private xmlDocument!: Document;
@@ -10,7 +9,7 @@ export default class ExcelTable {
     private autoFilterElement!: Element;
   
     public fromXML(xmlString: string) {
-      this.xmlDocument = jsDOM.parser.parseFromString(xmlString, "text/xml");
+      this.xmlDocument = new DOMParser().parseFromString(xmlString, "text/xml");
       this.tableElement = this.xmlDocument.getElementsByTagName('table')[0];
       const [minCellRef, maxCellRef] = this.tableElement.getAttribute('ref')?.split(':') ?? ['A1', 'A1'];
       this.minCellIndex = ExcelColumnConverter.cellRefToIndex(minCellRef);
@@ -26,7 +25,7 @@ export default class ExcelTable {
       this.tableElement.setAttribute('ref', tableRef);
       this.autoFilterElement.setAttribute('ref', tableRef); 
   
-      return jsDOM.serializer.serializeToString(this.xmlDocument);
+      return new XMLSerializer().serializeToString(this.xmlDocument);
     }
   }
   

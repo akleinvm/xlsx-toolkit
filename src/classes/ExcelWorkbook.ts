@@ -1,21 +1,23 @@
-import jsDOM from './SharedParserSerializer';
-
-export default class ExcelTable {
+export default class ExcelWorkbook {
     private xmlDocument!: Document;
-    public sheets!: Map<number, Element>;
+    public sheets!: Array<string>;
   
     public fromXML(xmlString: string) {
-      this.xmlDocument = jsDOM.parser.parseFromString(xmlString, "text/xml");
+      this.xmlDocument = new DOMParser().parseFromString(xmlString, "text/xml");
 
       const sheets = this.xmlDocument.getElementsByTagName('sheet');
-      for (let i = 1; i <= sheets.length; i++) {
-        this.sheets.set(i, sheets[i]);
+      this.sheets = [];
+      for (let i = 0; i < sheets.length; i++) {
+        const sheet = sheets[i];
+        const sheetName = sheet.getAttribute('name');
+        if(!sheetName) throw new Error('A sheetName is null or invalid');
+        this.sheets[i] = sheetName;
       }
 
     }
   
     public toString(): string {
-      return jsDOM.serializer.serializeToString(this.xmlDocument);
+      return new XMLSerializer().serializeToString(this.xmlDocument);
     }
   }
   

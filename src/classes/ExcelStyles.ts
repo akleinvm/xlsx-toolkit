@@ -1,5 +1,3 @@
-import jsDOM from './SharedParserSerializer';
-
 export default class ExcelStyles {
     private xmlDocument!: Document;
     private styleSheetElement!: Element;
@@ -8,7 +6,7 @@ export default class ExcelStyles {
     private cellFormatArray!: Array<number>;
   
     public fromXML(xmlString: string) {
-      this.xmlDocument = jsDOM.parser.parseFromString(xmlString, "text/xml"); 
+      this.xmlDocument = new DOMParser().parseFromString(xmlString, "text/xml"); 
       this.styleSheetElement = this.xmlDocument.getElementsByTagName('styleSheet')[0]; 
       this.namespace = this.styleSheetElement.getAttribute('xmlns') ?? ""; 
   
@@ -21,7 +19,6 @@ export default class ExcelStyles {
         const formatId = Number(format.getAttribute('numFmtId'));
         this.cellFormatArray.push(formatId);
       }
-      console.log(this.cellFormatArray);
     }
   
     public getFormatIndex(formatId: number): string {
@@ -39,6 +36,6 @@ export default class ExcelStyles {
     }
   
     public toString() {
-      return jsDOM.serializer.serializeToString(this.xmlDocument);
+      return new XMLSerializer().serializeToString(this.xmlDocument);
     }
 }
