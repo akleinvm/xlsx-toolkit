@@ -31,11 +31,13 @@ export default class ExcelWorksheet {
     }
 
     this.cellsMap = new Map();
+    console.log(new Date().getTime());
     const cells = this.sheetDataElement.getElementsByTagName('c');
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       this.cellsMap.set(cell.getAttribute('r') ?? '', cell);
     }
+    console.log(new Date().getTime());
   }
 
   public addCell (cell: CellObject, rowNo: number, columnNo: number): void {
@@ -67,19 +69,23 @@ export default class ExcelWorksheet {
     if(!cellType) cellElement.removeAttribute('t'); 
     else cellElement.setAttribute('t', cellType);
         
+    let value = cell.Value;
+    if(cellType === 's') value = this.sharedStrings.getStringIndex(cell.Value).toString();
+
     const valueElement = this.xmlDocument.createElementNS(this.namespace, 'v');
-    valueElement.textContent = cell.Value.toString();
+    valueElement.textContent = value;
     cellElement.replaceChildren(valueElement);
-    console.log(cellElement.textContent);
     rowElement.appendChild(cellElement);
     
     this.cellsMap.set(cellReference, cellElement);
   }
 
 
+
+
   public getRangeValues (): string[][] {
     console.log('Retrieving worksheet range values');
-    
+
     const output: string[][] = [];
 
     for(const [key, cell] of this.cellsMap) {

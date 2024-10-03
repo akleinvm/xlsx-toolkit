@@ -1,6 +1,7 @@
 import { expect, expectTypeOf, test } from "vitest";
+import { JSDOM } from 'jsdom';
 import ExcelDocument from "./index";
-import {read, readFileSync} from 'fs';
+import {readFileSync} from 'fs';
 import ExcelColumnConverter from "./classes/ExcelColumnConverter";
 import fs from 'fs';
 import ExcelWorksheet from "./classes/ExcelWorksheet";
@@ -8,8 +9,16 @@ import ExcelWorksheet from "./classes/ExcelWorksheet";
 let workbook: ExcelDocument;
 let worksheet: ExcelWorksheet;
 
+let updatedWorkbook: ExcelDocument;
+let rangeValues: Array<Array<string>>;
+
+const {window} = new JSDOM('');
+global.DOMParser = window.DOMParser;
+global.Document  = window.Document;
+global.XMLSerializer = window.XMLSerializer;
+
 test("Load XLSX file", async () => {
-  const file = readFileSync('./test/Book1.xlsx');
+  const file = readFileSync('./test/test1.xlsx');
   
   workbook = new ExcelDocument();
   await workbook.loadXLSX(file)
@@ -17,12 +26,29 @@ test("Load XLSX file", async () => {
 
 test("Read XLSX worksheet", async () => {
   if(!workbook) throw new Error('workbook is null');
-  worksheet = await workbook.getWorksheet(2);
-  //const rangeValues = worksheet.getRangeValues();
+  worksheet = await workbook.getWorksheet(1);
+  
+  rangeValues = worksheet.getRangeValues();
 });
 
 test("Update XLSX worksheet", async () => {
-  worksheet.addCell({Value: 30009, Format: {Type: null, Style: null}}, 2, 33);
+  const file = readFileSync('./test/Book1.xlsx');
+  
+  updatedWorkbook = new ExcelDocument();
+  await updatedWorkbook.loadXLSX(file);
+
+  const updatedWorksheet = await updatedWorkbook.getWorksheet(1);
+
+  for (let rowNo = 0; rowNo < rangeValues.length; rowNo++) {
+    const row = rangeValues[rowNo];
+
+    for (let columnNo = 0; columnNo < row.length; columnNo++) {
+      const column = row[columnNo];
+
+      updatedWorksheet.addCell({Value: column, Format: {Type: 's', Style: null}}, rowNo + 1, columnNo + 1);
+    }
+  }
+  
 
   //worksheet.addRows([[{Value: 3234, Format: {Type: null, Style: null}}]], 9, 9);
   /*
@@ -38,7 +64,7 @@ test("Update XLSX worksheet", async () => {
 
 test("Save XLSX file", async () => {
 
-  const arrayBuffer = await workbook.saveXLSX();
+  const arrayBuffer = await updatedWorkbook.saveXLSX();
   if(!arrayBuffer) return;
   const buffer = Buffer.from(arrayBuffer);
 
