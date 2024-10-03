@@ -1,6 +1,6 @@
 {
   "name": "xlsx-toolkit",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A powerful and flexible TypeScript library for loading, parsing, and modifying XLSX (Excel) files. Ideal for developers who need to manipulate Excel files in Node.js or the browser.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
