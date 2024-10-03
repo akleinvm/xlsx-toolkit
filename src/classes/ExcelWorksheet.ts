@@ -78,6 +78,8 @@ export default class ExcelWorksheet {
 
 
   public getRangeValues (): string[][] {
+    console.log('Retrieving worksheet range values');
+    
     const output: string[][] = [];
 
     for(const [key, cell] of this.cellsMap) {
