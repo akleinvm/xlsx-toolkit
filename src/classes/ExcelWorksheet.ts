@@ -4,13 +4,12 @@ import ExcelSharedStrings from "./ExcelSharedStrings";
 
 export default class ExcelWorksheet {
   private xmlDocument!: Document;
-  private worksheetElement!: Element;
   private namespace!: string;
-  private sheetDataElement!: Element;
+  private sheetData!: Element;
   private sharedStrings!: ExcelSharedStrings;
 
-  private rowsMap!: Map<number, Element>;
-  private cellsMap!: Map<string, Element>;
+  //private rowsMap!: Map<number, Element>;
+  //private cellsMap!: Map<string, Element>;
 
   constructor(sharedStrings: ExcelSharedStrings) {
     this.sharedStrings = sharedStrings;
@@ -19,35 +18,23 @@ export default class ExcelWorksheet {
   public fromXML(xmlString: string) {
     this.xmlDocument = new DOMParser().parseFromString(xmlString, "text/xml");
 
-    this.worksheetElement = this.xmlDocument.getElementsByTagName('worksheet')[0];
-    this.namespace = this.worksheetElement.getAttribute('xmlns') ?? "";
+    const worksheetElement = this.xmlDocument.querySelector('worksheet');
+    if(!worksheetElement) throw new Error('worksheet element not found');
+    this.namespace = worksheetElement.getAttribute('xmlns') ?? "";
 
-    this.sheetDataElement = this.xmlDocument.getElementsByTagName("sheetData")[0];
-    this.rowsMap = new Map();
-    const rows = this.sheetDataElement.getElementsByTagName('row');
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      this.rowsMap.set(Number(row.getAttribute('r')), row);
-    }
-
-    this.cellsMap = new Map();
-    console.log(new Date().getTime());
-    const cells = this.sheetDataElement.getElementsByTagName('c');
-    for (let i = 0; i < cells.length; i++) {
-      const cell = cells[i];
-      this.cellsMap.set(cell.getAttribute('r') ?? '', cell);
-    }
-    console.log(new Date().getTime());
+    const sheetDataElement = this.xmlDocument.querySelector("sheetData");
+    if(!sheetDataElement) throw new Error('sheet data element not found');
+    this.sheetData = sheetDataElement;
   }
 
   public addCell (cell: CellObject, rowNo: number, columnNo: number): void {
-    let rowElement = this.rowsMap.get(rowNo);
+    let rowElement = this.sheetData.querySelector(`row[r="${rowNo}"]`);
+
     if(!rowElement) {
       rowElement = this.xmlDocument.createElementNS(this.namespace, 'row');
       rowElement.setAttribute('r', rowNo.toString());
       rowElement.setAttribute('spans', `${1}:${columnNo}`);
-      this.sheetDataElement.appendChild(rowElement);
-      this.rowsMap.set(rowNo, rowElement);
+      this.sheetData.appendChild(rowElement);
     } else {
       const [minSpan, maxSpan] = rowElement.getAttribute('spans')?.split(':') ?? [columnNo, columnNo];
       const spans = `${Math.min(columnNo, Number(minSpan)).toString()}:${Math.max(columnNo, Number(maxSpan))}`;
@@ -55,7 +42,7 @@ export default class ExcelWorksheet {
     }
 
     const cellReference = ExcelColumnConverter.numberToColumn(columnNo) + Number(rowNo);
-    let cellElement = this.cellsMap.get(cellReference);
+    let cellElement = rowElement.querySelector(`c[r="${cellReference}"]`);
     if(!cellElement) {
       cellElement = this.xmlDocument.createElementNS(this.namespace, 'c');
       cellElement.setAttribute('r', cellReference);
@@ -77,7 +64,6 @@ export default class ExcelWorksheet {
     cellElement.replaceChildren(valueElement);
     rowElement.appendChild(cellElement);
     
-    this.cellsMap.set(cellReference, cellElement);
   }
 
 
@@ -88,8 +74,11 @@ export default class ExcelWorksheet {
 
     const output: string[][] = [];
 
-    for(const [key, cell] of this.cellsMap) {
-      const {RowIndex, ColumnIndex} = ExcelColumnConverter.cellRefToIndex(key);
+    for(const cell of this.sheetData.getElementsByTagName('c')) {
+      const reference = cell.getAttribute('r');
+      if(!reference) throw new Error('A cell with blank reference found');
+
+      const {RowIndex, ColumnIndex} = ExcelColumnConverter.cellRefToIndex(reference);
       const rowNo = RowIndex - 1;
       const columnNo = ColumnIndex - 1;
 
