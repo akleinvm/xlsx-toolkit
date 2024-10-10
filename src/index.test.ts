@@ -18,7 +18,7 @@ global.Document  = window.Document;
 global.XMLSerializer = window.XMLSerializer;
 
 test("Load XLSX file", async () => {
-  const file = readFileSync('./test/test1.xlsx');
+  const file = readFileSync('./test/Project 1.xlsx');
   
   workbook = new ExcelDocument();
   await workbook.loadXLSX(file)
@@ -32,34 +32,25 @@ test("Read XLSX worksheet", async () => {
 });
 
 test("Update XLSX worksheet", async () => {
-  const file = readFileSync('./test/Book1.xlsx');
+  const file = readFileSync('./test/Comparison of Valve Dimension Table S_DDMMYYYY.xlsx');
   
   updatedWorkbook = new ExcelDocument();
   await updatedWorkbook.loadXLSX(file);
 
-  const updatedWorksheet = await updatedWorkbook.getWorksheet(1);
+  const updatedWorksheet = await updatedWorkbook.getWorksheet(6);
+  
+  const copiedRangeValues = rangeValues.splice(5, rangeValues.length);
 
-  for (let rowNo = 0; rowNo < rangeValues.length; rowNo++) {
-    const row = rangeValues[rowNo];
+  for (let rowNo = 0; rowNo < copiedRangeValues.length; rowNo++) {
+    const row = copiedRangeValues[rowNo];
 
     for (let columnNo = 0; columnNo < row.length; columnNo++) {
       const column = row[columnNo];
+      if(!column) continue;
 
-      updatedWorksheet.addCell({Value: column, Format: {Type: 's', Style: null}}, rowNo + 1, columnNo + 1);
+      updatedWorksheet.updateCellValue({Value: column, Format: {Type: 's', Style: null}}, rowNo + 6, columnNo + 1);
     }
   }
-  
-
-  //worksheet.addRows([[{Value: 3234, Format: {Type: null, Style: null}}]], 9, 9);
-  /*
-  for (let i = 1; i < 20; i++) {
-    for (let j = 1; j < 20; j++) {
-      worksheet.addCell({Value: 696969696969, Format: {Type: null, Style: null}}, i, j);
-    }
-  }*/
-  
-
-
 });
 
 test("Save XLSX file", async () => {
@@ -75,5 +66,32 @@ test("Save XLSX file", async () => {
         console.log('File saved successfully!');
     }
   })
+});
+
+test("Generate sharedStrings file", async () => {
+  
+    const arrayBuffer = workbook.getSharedString();
+  
+    fs.writeFile('./test/output/sharedStrings.txt', arrayBuffer, (error) => {
+      if (error) {
+        console.error('Error saving the file:', error);
+      } else {
+          console.log('File saved successfully!');
+      }
+    })
 
 });
+
+test("Generate stringValues file", async () => {
+  
+    const arrayBuffer = JSON.stringify(worksheet.getRangeValues());
+  
+    fs.writeFile('./test/output/rangeValues.txt', arrayBuffer, (error) => {
+      if (error) {
+        console.error('Error saving the file:', error);
+      } else {
+          console.log('File saved successfully!');
+      }
+    })
+
+})
