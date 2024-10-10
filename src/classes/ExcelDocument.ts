@@ -59,25 +59,12 @@ export default class ExcelDocument {
         if(!xmlWorksheet) throw new Error('worksheet is null or undefined');
         const worksheet = new ExcelWorksheet(this.sharedStrings);
         worksheet.fromXML(xmlWorksheet);
+        
+        const worksheetRowNo = worksheet.rowsMap.size;
+        const worksheetCellNo = worksheet.cellsMap.size;
+        console.log(`${worksheetRowNo} row(s) and ${worksheetCellNo} cell(s) detected.`);
+        
         this.worksheets.set(sheetNo, worksheet);
-        /*
-        for (let i = 0; i < this.workbook.sheets.length; i++) {
-            console.log(`Parsing sheet${i + 1}.xml...`);
-            const xmlWorksheet = this.files.get(`xl/worksheets/sheet${i + 1}.xml`);
-            if(!xmlWorksheet) throw new Error('worksheet is null or undefined');
-            const worksheet = new ExcelWorksheet(this.sharedStrings);
-            //const xmlWorksheet = bufferToString(bufferWorksheet);
-            worksheet.fromXML(xmlWorksheet);
-
-            const worksheetName = this.workbook.sheets[i].getAttribute('name');
-            if(!worksheetName) throw new Error('worksheetName is null or undefined');
-            this.worksheets.set(worksheetName, worksheet);
-        }
-
-
-        const worksheet = this.worksheets.get(sheetName);
-        if(!worksheet) throw new Error(`${sheetName} can't be found`);
-*/
         return worksheet;
     }
 
@@ -100,16 +87,11 @@ export default class ExcelDocument {
         return arrayBuffer;
     }
 
-    
-
-    
-}
-
-function bufferToString(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binaryString = '';
-    for (let i = 0; i < bytes.length; i++) {
-        binaryString += String.fromCharCode(bytes[i]);
+    public getSharedString () {
+        return JSON.stringify(this.sharedStrings.sharedStringArray);
     }
-    return binaryString;
+
+    
+
+    
 }
