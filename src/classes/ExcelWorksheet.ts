@@ -4,37 +4,61 @@ import ExcelSharedStrings from "./ExcelSharedStrings";
 
 export default class ExcelWorksheet {
   private xmlDocument!: Document;
+  private worksheetElement!: Element;
   private namespace!: string;
-  private sheetData!: Element;
+  private sheetDataElement!: Element;
   private sharedStrings!: ExcelSharedStrings;
 
-  //private rowsMap!: Map<number, Element>;
-  //private cellsMap!: Map<string, Element>;
+  public rowsMap!: Map<number, Element>;
+  public cellsMap!: Map<string, Element>;
 
   constructor(sharedStrings: ExcelSharedStrings) {
     this.sharedStrings = sharedStrings;
   }
 
-  public fromXML(xmlString: string) {
+  public async fromXML(xmlString: string) {
     this.xmlDocument = new DOMParser().parseFromString(xmlString, "text/xml");
 
-    const worksheetElement = this.xmlDocument.querySelector('worksheet');
-    if(!worksheetElement) throw new Error('worksheet element not found');
-    this.namespace = worksheetElement.getAttribute('xmlns') ?? "";
+    this.worksheetElement = this.xmlDocument.getElementsByTagName('worksheet')[0];
+    this.namespace = this.worksheetElement.getAttribute('xmlns') ?? "";
 
-    const sheetDataElement = this.xmlDocument.querySelector("sheetData");
-    if(!sheetDataElement) throw new Error('sheet data element not found');
-    this.sheetData = sheetDataElement;
+    this.sheetDataElement = this.xmlDocument.getElementsByTagName("sheetData")[0];
+    this.rowsMap = new Map();
+    const rows = this.sheetDataElement.querySelectorAll('row');
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNo = Number(row.getAttribute('r'));
+      this.rowsMap.set(rowNo, row);
+    }
+
+    this.cellsMap = new Map();
+    const cells = this.sheetDataElement.querySelectorAll('c');
+
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      const cellRef = cell.getAttribute('r');
+      
+      if(cellRef) this.cellsMap.set(cellRef, cell);
+    }
   }
 
-  public addCell (cell: CellObject, rowNo: number, columnNo: number): void {
-    let rowElement = this.sheetData.querySelector(`row[r="${rowNo}"]`);
-
+  public updateCellValue (cell: CellObject, rowNo: number, columnNo: number): void {
+    let rowElement = this.rowsMap.get(rowNo);
     if(!rowElement) {
       rowElement = this.xmlDocument.createElementNS(this.namespace, 'row');
       rowElement.setAttribute('r', rowNo.toString());
       rowElement.setAttribute('spans', `${1}:${columnNo}`);
-      this.sheetData.appendChild(rowElement);
+
+      const nextSibling = Array.from(this.rowsMap).find(([key, element]) => key > rowNo)?.[1];
+      
+      if(!nextSibling) {
+        this.sheetDataElement.appendChild(rowElement);
+      } else {
+        this.sheetDataElement.insertBefore(rowElement, nextSibling);
+      }
+      
+      this.rowsMap.set(rowNo, rowElement);
     } else {
       const [minSpan, maxSpan] = rowElement.getAttribute('spans')?.split(':') ?? [columnNo, columnNo];
       const spans = `${Math.min(columnNo, Number(minSpan)).toString()}:${Math.max(columnNo, Number(maxSpan))}`;
@@ -42,7 +66,7 @@ export default class ExcelWorksheet {
     }
 
     const cellReference = ExcelColumnConverter.numberToColumn(columnNo) + Number(rowNo);
-    let cellElement = rowElement.querySelector(`c[r="${cellReference}"]`);
+    let cellElement = this.cellsMap.get(cellReference);
     if(!cellElement) {
       cellElement = this.xmlDocument.createElementNS(this.namespace, 'c');
       cellElement.setAttribute('r', cellReference);
@@ -63,7 +87,7 @@ export default class ExcelWorksheet {
     valueElement.textContent = value;
     cellElement.replaceChildren(valueElement);
     rowElement.appendChild(cellElement);
-    
+    this.cellsMap.set(cellReference, cellElement);
   }
 
 
@@ -74,11 +98,8 @@ export default class ExcelWorksheet {
 
     const output: string[][] = [];
 
-    for(const cell of this.sheetData.getElementsByTagName('c')) {
-      const reference = cell.getAttribute('r');
-      if(!reference) throw new Error('A cell with blank reference found');
-
-      const {RowIndex, ColumnIndex} = ExcelColumnConverter.cellRefToIndex(reference);
+    for(const [key, cell] of this.cellsMap) {
+      const {RowIndex, ColumnIndex} = ExcelColumnConverter.cellRefToIndex(key);
       const rowNo = RowIndex - 1;
       const columnNo = ColumnIndex - 1;
 
@@ -101,86 +122,3 @@ export default class ExcelWorksheet {
     return new XMLSerializer().serializeToString(this.xmlDocument);
   }
 }
-
-/*
-
-  private getValues(rangeStart: string, rangeEnd: string): Array<Array<string>> {
-    const startIndex = ExcelColumnConverter.cellRefToIndex(rangeStart);
-    const minRowNo = startIndex.RowIndex; 
-    const minColumnNo = startIndex.ColumnIndex; 
-
-    const endIndex = ExcelColumnConverter.cellRefToIndex(rangeEnd);
-    const maxRowNo = endIndex.RowIndex; 
-    const maxColumnNo = endIndex.ColumnIndex; 
-
-    const output = new Array<Array<string>>();
-    for (let rowNo = minRowNo; rowNo <= maxRowNo; rowNo++) {
-      const arrayRowNo = rowNo - minRowNo;
-      output[arrayRowNo] = [];
-
-      for (let columnNo = minColumnNo; columnNo <= maxColumnNo; columnNo++) {
-        const currentColumnRef = ExcelColumnConverter.numberToColumn(columnNo);
-        const currentCell = this.cellsMap.get(currentColumnRef + rowNo.toString());
-        
-        let cellValue = '';
-        const cell = currentCell?.getElementsByTagName('v')[0];
-        if(cell) {
-          cellValue = cell.textContent ?? '';
-          const cellType = currentCell?.getAttribute('t');
-          if(cellType === 's') cellValue = this.sharedStrings.getIndexString(Number(cellValue));
-        }
-        
-        const arrayColumnNo = columnNo - minColumnNo;
-        output[arrayRowNo][arrayColumnNo] = cellValue;
-      }
-    }
-    
-    return output;
-  }
-    */
-
-  /*
-  
-  public addRows(rows: Array<Array<CellObject>>, rowStartIndex: number, columnStartIndex: number): void {
-    for(let i = 0; i < rows.length; i++) {
-      const rowIndex = rowStartIndex + i;
-      const row = rows[i];
-
-      let rowElement = this.rowsMap.get(rowIndex);
-      if(!rowElement) {
-        rowElement = this.xmlDocument.createElementNS(this.namespace, 'row');
-        rowElement.setAttribute('r', rowIndex.toString());
-        rowElement.setAttribute('spans', `${columnStartIndex}:${columnStartIndex + row.length}`);
-        this.sheetDataElement.appendChild(rowElement);
-        this.rowsMap.set(rowIndex, rowElement);
-      } else {
-        const [minSpan, maxSpan] = rowElement.getAttribute('spans')?.split(':') ?? [];
-        const spans = `${Math.min(columnStartIndex, Number(minSpan)).toString()}:${Math.max(columnStartIndex + row.length - 1, Number(maxSpan))}`;
-        rowElement.setAttribute('spans', spans);
-      }
-      
-      for(let j = 0; j < row.length; j++) {
-        const columnIndex = columnStartIndex + j;
-        
-        const cellReference = ExcelColumnConverter.numberToColumn(columnIndex) + rowIndex;
-        let cellElement = this.cellsMap.get(cellReference);
-        if(!cellElement) {
-          cellElement = this.xmlDocument.createElementNS(this.namespace, 'c');
-          cellElement.setAttribute('r', cellReference);
-        }
-        
-        const cellStyle = row[j].Format.Style;
-        if(cellStyle) cellElement.setAttribute('s', cellStyle ?? "");
-
-        const cellType = row[j].Format.Type;
-        if(cellType) cellElement.setAttribute('t', cellType ?? "");
-        
-        const valueElement = this.xmlDocument.createElementNS(this.namespace, 'v');
-        valueElement.textContent = row[j].Value.toString();
-        cellElement.replaceChildren(valueElement);
-        rowElement.appendChild(cellElement);
-        
-        this.cellsMap.set(cellReference, cellElement);
-      }
-    }
-  }*/
