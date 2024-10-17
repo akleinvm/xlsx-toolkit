@@ -2,7 +2,6 @@ import { expect, expectTypeOf, test } from "vitest";
 import { JSDOM } from 'jsdom';
 import ExcelDocument from "./index";
 import {readFileSync} from 'fs';
-import ExcelColumnConverter from "./classes/ExcelColumnConverter";
 import fs from 'fs';
 import ExcelWorksheet from "./classes/ExcelWorksheet";
 
@@ -31,7 +30,7 @@ test("Read XLSX worksheet", async () => {
   rangeValues = worksheet.getRangeValues();
 });
 
-test("Update XLSX worksheet", async () => {
+test("Update XLSX worksheet - Fill up values", async () => {
   const file = readFileSync('./test/Comparison of Valve Dimension Table S_DDMMYYYY.xlsx');
   
   updatedWorkbook = new ExcelDocument();
@@ -48,7 +47,27 @@ test("Update XLSX worksheet", async () => {
       const column = row[columnNo];
       if(!column) continue;
 
-      updatedWorksheet.updateCellValue({Value: column, Format: {Type: 's', Style: null}}, rowNo + 6, columnNo + 1);
+      updatedWorksheet.updateCell({Value: column, Format: {Type: 's', Style: null}}, rowNo + 6, columnNo + 1);
+    }
+  }
+});
+
+test("Update XLSX worksheet - Fillup formulas", async () => {
+  const updatedWorksheet = await updatedWorkbook.getWorksheet(4);
+  const rangeFormulas = updatedWorksheet.getRangeFormulas();
+  const copiedRangeFormulas = rangeFormulas.splice(5, 6)[0];
+  console.log(copiedRangeFormulas);
+
+  for (let rowNo = 0; rowNo < 10; rowNo++) {
+    const row = copiedRangeFormulas;
+
+    for (let columnNo = 0; columnNo < row.length; columnNo++) {
+      const column = row[columnNo];
+      if(!column) continue;
+      const updatedColumn = column.replace('6', rowNo.toString());
+      console.log(updatedColumn);
+
+      updatedWorksheet.updateCell({Formula: updatedColumn, Format: {Type: 's', Style: null}}, rowNo + 5, columnNo + 1);
     }
   }
 });

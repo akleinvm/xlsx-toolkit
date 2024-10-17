@@ -43,7 +43,7 @@ export default class ExcelWorksheet {
     }
   }
 
-  public updateCellValue (cell: CellObject, rowNo: number, columnNo: number): void {
+  public updateCell (cell: CellObject, rowNo: number, columnNo: number): void {
     let rowElement = this.rowsMap.get(rowNo);
     if(!rowElement) {
       rowElement = this.xmlDocument.createElementNS(this.namespace, 'row');
@@ -79,19 +79,28 @@ export default class ExcelWorksheet {
     const cellType = cell.Format.Type;
     if(!cellType) cellElement.removeAttribute('t'); 
     else cellElement.setAttribute('t', cellType);
-        
-    let value = cell.Value;
-    if(cellType === 's') value = this.sharedStrings.getStringIndex(cell.Value).toString();
+      
+    const cellChildren: Array<Element> = [];
+    if(cell.Value) {
+      let value = cell.Value;
+      if(cellType === 's') value = this.sharedStrings.getStringIndex(cell.Value).toString();
+      const valueElement = this.xmlDocument.createElementNS(this.namespace, 'v');
+      valueElement.textContent = value;
+      cellChildren.push(valueElement);
+    }
+      
+    if(cell.Formula) {
+      const formula = cell.Formula;
+      const formulaElement = this.xmlDocument.createElementNS(this.namespace, 'f');
+      formulaElement.textContent = formula;
+      cellChildren.push(formulaElement);
+    }
 
-    const valueElement = this.xmlDocument.createElementNS(this.namespace, 'v');
-    valueElement.textContent = value;
-    cellElement.replaceChildren(valueElement);
+
+    cellElement.replaceChildren(...cellChildren);
     rowElement.appendChild(cellElement);
     this.cellsMap.set(cellReference, cellElement);
   }
-
-
-
 
   public getRangeValues (): string[][] {
     console.log('Retrieving worksheet range values');
@@ -113,6 +122,27 @@ export default class ExcelWorksheet {
 
       if(!output[rowNo]) output[rowNo] = [];
       output[rowNo][columnNo] = cellValue;
+    }
+    return output;
+  }
+
+  public getRangeFormulas (): string[][] {
+    console.log('Retrieving worksheet range formulas');
+
+    const output: string[][] = [];
+
+    for(const [key, cell] of this.cellsMap) {
+      const {RowIndex, ColumnIndex} = ExcelColumnConverter.cellRefToIndex(key);
+      const rowNo = RowIndex - 1;
+      const columnNo = ColumnIndex - 1;
+
+      const formulaElement = cell.querySelector('f');
+      if(!formulaElement?.textContent) continue;
+
+      const cellFormula = formulaElement.textContent;
+
+      if(!output[rowNo]) output[rowNo] = [];
+      output[rowNo][columnNo] = cellFormula;
     }
     return output;
   }

@@ -90,8 +90,4 @@ export default class ExcelDocument {
     public getSharedString () {
         return JSON.stringify(this.sharedStrings.sharedStringArray);
     }
-
-    
-
-    
 }
