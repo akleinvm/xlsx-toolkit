@@ -27,7 +27,7 @@ export default class ExcelColumnConverter {
         }
       }
   
-      return {RowIndex: rowIndex, ColumnIndex: columnIndex}
+      return {rowIndex: rowIndex, columnIndex: columnIndex}
     }
   
     static numberToColumn(number: number): string {

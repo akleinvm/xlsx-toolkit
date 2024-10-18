@@ -18,8 +18,8 @@ export default class ExcelTable {
     }
   
     public toString(): string {
-      const minCellRef = ExcelColumnConverter.numberToColumn(this.minCellIndex.ColumnIndex) + this.minCellIndex.RowIndex;
-      const maxCellRef = ExcelColumnConverter.numberToColumn(this.maxCellIndex.ColumnIndex) + this.maxCellIndex.RowIndex;
+      const minCellRef = ExcelColumnConverter.numberToColumn(this.minCellIndex.columnIndex) + this.minCellIndex.rowIndex;
+      const maxCellRef = ExcelColumnConverter.numberToColumn(this.maxCellIndex.columnIndex) + this.maxCellIndex.rowIndex;
       const tableRef = `${minCellRef}:${maxCellRef}`;
   
       this.tableElement.setAttribute('ref', tableRef);
