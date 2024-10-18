@@ -4,12 +4,24 @@ import ExcelDocument from "./index";
 import {readFileSync} from 'fs';
 import fs from 'fs';
 import ExcelWorksheet from "./classes/ExcelWorksheet";
+import { CellObject } from "./types";
+import ExcelColumnConverter from "./classes/ExcelColumnConverter";
 
-let workbook: ExcelDocument;
-let worksheet: ExcelWorksheet;
+let previousSourceWorkbook: ExcelDocument;
+let previousSourceWorksheet: ExcelWorksheet;
+let previousSourceRange: (CellObject | undefined)[][];
 
-let updatedWorkbook: ExcelDocument;
-let rangeValues: Array<Array<string>>;
+let latestSourceWorkbook: ExcelDocument;
+let latestSourceWorksheet: ExcelWorksheet;
+let latestSourceRange: (CellObject | undefined)[][];
+
+let templateWorkbook: ExcelDocument;
+let templateWorksheet1: ExcelWorksheet;
+let templateWorksheet2: ExcelWorksheet;
+let templateWorksheet3: ExcelWorksheet;
+let templateWorksheet4: ExcelWorksheet;
+let templateWorksheet5: ExcelWorksheet;
+let templateWorksheet6: ExcelWorksheet;
 
 const {window} = new JSDOM('');
 global.DOMParser = window.DOMParser;
@@ -17,64 +29,67 @@ global.Document  = window.Document;
 global.XMLSerializer = window.XMLSerializer;
 
 test("Load XLSX file", async () => {
-  const file = readFileSync('./test/Project 1.xlsx');
+  const previousSourcefile = readFileSync('./test/Project 1.xlsx');
   
-  workbook = new ExcelDocument();
-  await workbook.loadXLSX(file)
+  previousSourceWorkbook = new ExcelDocument();
+  await previousSourceWorkbook.loadXLSX(previousSourcefile)
+  
+  const latestSourcefile = readFileSync('./test/Project 2.xlsx');
+  latestSourceWorkbook = new ExcelDocument();
+  await latestSourceWorkbook.loadXLSX(latestSourcefile)
 });
 
 test("Read XLSX worksheet", async () => {
-  if(!workbook) throw new Error('workbook is null');
-  worksheet = await workbook.getWorksheet(1);
-  
-  rangeValues = worksheet.getRangeValues();
+  if(!previousSourceWorkbook) throw new Error('workbook is null');
+  previousSourceWorksheet = await previousSourceWorkbook.getWorksheet(1);
+  previousSourceRange = previousSourceWorksheet.getRange("B6", "BJ9999999999"); //console.log(previousSourceRange);
+
+  if(!latestSourceWorkbook) throw new Error('workbook is null');
+  latestSourceWorksheet = await latestSourceWorkbook.getWorksheet(1);
+  latestSourceRange = latestSourceWorksheet.getRange("B6", "BJ9999999999");
 });
 
 test("Update XLSX worksheet - Fill up values", async () => {
   const file = readFileSync('./test/Comparison of Valve Dimension Table S_DDMMYYYY.xlsx');
   
-  updatedWorkbook = new ExcelDocument();
-  await updatedWorkbook.loadXLSX(file);
+  templateWorkbook = new ExcelDocument();
+  await templateWorkbook.loadXLSX(file);
 
-  const updatedWorksheet = await updatedWorkbook.getWorksheet(6);
+  templateWorksheet6 = await templateWorkbook.getWorksheet(6);
+  templateWorksheet6.updateRange(previousSourceRange, 'B6');
   
-  const copiedRangeValues = rangeValues.splice(5, rangeValues.length);
-
-  for (let rowNo = 0; rowNo < copiedRangeValues.length; rowNo++) {
-    const row = copiedRangeValues[rowNo];
-
-    for (let columnNo = 0; columnNo < row.length; columnNo++) {
-      const column = row[columnNo];
-      if(!column) continue;
-
-      updatedWorksheet.updateCell({Value: column, Format: {Type: 's', Style: null}}, rowNo + 6, columnNo + 1);
-    }
-  }
+  templateWorksheet5 = await templateWorkbook.getWorksheet(5);
+  templateWorksheet5.updateRange(latestSourceRange, 'B6');
 });
 
 test("Update XLSX worksheet - Fillup formulas", async () => {
-  const updatedWorksheet = await updatedWorkbook.getWorksheet(4);
-  const rangeFormulas = updatedWorksheet.getRangeFormulas();
-  const copiedRangeFormulas = rangeFormulas.splice(5, 6)[0];
-  console.log(copiedRangeFormulas);
+  const updateFormula = async (workSheetNo: number): Promise<void> => {
+    const templateWorksheet4 = await templateWorkbook.getWorksheet(workSheetNo);
+    const template4Formulas = templateWorksheet4.getRange('B6', 'BJ6')[0]; //console.log(template4Formulas);
+    for (let rowNo = 0; rowNo < latestSourceRange.length; rowNo++) {
+      const row = template4Formulas;
 
-  for (let rowNo = 0; rowNo < 10; rowNo++) {
-    const row = copiedRangeFormulas;
+      for (let columnNo = 0; columnNo < row.length; columnNo++) {
+        const column = row[columnNo];
+        if(!column?.formula) continue;
+        const updatedColumn = column.formula.replaceAll('6', (rowNo + 6).toString());
 
-    for (let columnNo = 0; columnNo < row.length; columnNo++) {
-      const column = row[columnNo];
-      if(!column) continue;
-      const updatedColumn = column.replace('6', rowNo.toString());
-      console.log(updatedColumn);
-
-      updatedWorksheet.updateCell({Formula: updatedColumn, Format: {Type: 's', Style: null}}, rowNo + 5, columnNo + 1);
+        const cellRef = ExcelColumnConverter.numberToColumn(columnNo + 2) + Number(rowNo + 6);
+        templateWorksheet4.updateCell({formula: updatedColumn, format: column.format}, cellRef);
+      }
     }
-  }
+  };
+
+  await updateFormula(4);
+  await updateFormula(3);
+  await updateFormula(2);
+  await updateFormula(1);
+  
 });
 
 test("Save XLSX file", async () => {
 
-  const arrayBuffer = await updatedWorkbook.saveXLSX();
+  const arrayBuffer = await templateWorkbook.saveXLSX();
   if(!arrayBuffer) return;
   const buffer = Buffer.from(arrayBuffer);
 
@@ -86,7 +101,7 @@ test("Save XLSX file", async () => {
     }
   })
 });
-
+/*
 test("Generate sharedStrings file", async () => {
   
     const arrayBuffer = workbook.getSharedString();
@@ -103,7 +118,7 @@ test("Generate sharedStrings file", async () => {
 
 test("Generate stringValues file", async () => {
   
-    const arrayBuffer = JSON.stringify(worksheet.getRangeValues());
+    const arrayBuffer = JSON.stringify(worksheet.getRange("A1", "ZZZZZ999999999"));
   
     fs.writeFile('./test/output/rangeValues.txt', arrayBuffer, (error) => {
       if (error) {
@@ -113,4 +128,4 @@ test("Generate stringValues file", async () => {
       }
     })
 
-})
+})*/

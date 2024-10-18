@@ -16,7 +16,7 @@ export default class ExcelWorksheet {
     this.sharedStrings = sharedStrings;
   }
 
-  public async fromXML(xmlString: string) {
+  public fromXML(xmlString: string) {
     this.xmlDocument = new DOMParser().parseFromString(xmlString, "text/xml");
 
     this.worksheetElement = this.xmlDocument.getElementsByTagName('worksheet')[0];
@@ -43,14 +43,16 @@ export default class ExcelWorksheet {
     }
   }
 
-  public updateCell (cell: CellObject, rowNo: number, columnNo: number): void {
+  public updateCell (cell: CellObject, cellRef: string): void {
+    const {rowIndex: rowNo, columnIndex: columnNo} = ExcelColumnConverter.cellRefToIndex(cellRef);
+
     let rowElement = this.rowsMap.get(rowNo);
     if(!rowElement) {
       rowElement = this.xmlDocument.createElementNS(this.namespace, 'row');
       rowElement.setAttribute('r', rowNo.toString());
       rowElement.setAttribute('spans', `${1}:${columnNo}`);
 
-      const nextSibling = Array.from(this.rowsMap).find(([key, element]) => key > rowNo)?.[1];
+      const nextSibling = Array.from(this.rowsMap).find(([key]) => key > rowNo)?.[1];
       
       if(!nextSibling) {
         this.sheetDataElement.appendChild(rowElement);
@@ -72,81 +74,120 @@ export default class ExcelWorksheet {
       cellElement.setAttribute('r', cellReference);
     }
 
-    const cellStyle = cell.Format.Style;
-    if(!cellStyle) cellElement.removeAttribute('s'); 
-    else cellElement.setAttribute('s', cellStyle);
+    const cellStyle = cell.format?.style;
+    if(cellStyle) cellElement.setAttribute('s', cellStyle);
 
-    const cellType = cell.Format.Type;
-    if(!cellType) cellElement.removeAttribute('t'); 
-    else cellElement.setAttribute('t', cellType);
+    const cellType = cell.format?.type;
+    if(cellType) cellElement.setAttribute('t', 's');
       
-    const cellChildren: Array<Element> = [];
-    if(cell.Value) {
-      let value = cell.Value;
-      if(cellType === 's') value = this.sharedStrings.getStringIndex(cell.Value).toString();
+    const cellChildren: Element[] = [];
+    
+    if(cell.formula) {
+      const formula = cell.formula;
+      const formulaElement = this.xmlDocument.createElementNS(this.namespace, 'f');
+      formulaElement.textContent = formula;
+      cellChildren.push(formulaElement);
+    } else if (cell.value) {
+      let value = cell.value;
+      if(cellType === 'string') value = this.sharedStrings.getStringIndex(cell.value).toString();
       const valueElement = this.xmlDocument.createElementNS(this.namespace, 'v');
       valueElement.textContent = value;
       cellChildren.push(valueElement);
     }
       
-    if(cell.Formula) {
-      const formula = cell.Formula;
-      const formulaElement = this.xmlDocument.createElementNS(this.namespace, 'f');
-      formulaElement.textContent = formula;
-      cellChildren.push(formulaElement);
-    }
-
 
     cellElement.replaceChildren(...cellChildren);
     rowElement.appendChild(cellElement);
     this.cellsMap.set(cellReference, cellElement);
   }
 
-  public getRangeValues (): string[][] {
+  public updateRange (cellObjects: (CellObject | undefined)[][], startCellRef: string = 'A1'): void {
+    const {rowIndex, columnIndex} = ExcelColumnConverter.cellRefToIndex(startCellRef);
+
+    for (let rowNo = 0; rowNo < cellObjects.length; rowNo++) {
+      const row = cellObjects[rowNo];
+      if(!row?.length) continue;
+      for (let columnNo = 0; columnNo < row.length; columnNo++) {
+        const cell = row[columnNo];
+        if(!cell) continue;
+
+        const cellRef = ExcelColumnConverter.numberToColumn(columnIndex + columnNo) + Number(rowIndex + rowNo);
+        this.updateCell(cell, cellRef);
+      }
+    }
+
+  }
+
+  public cellElementToObject (cellElement: Element): CellObject {
+    const cellObject: CellObject = {}
+
+    if(!cellElement) return cellObject;
+
+    const cellValue = cellElement.querySelector('v')?.textContent;
+    const cellFormula = cellElement.querySelector('f')?.textContent;
+
+    if(!cellValue && !cellFormula) return cellObject;
+    
+    if(cellValue) cellObject.value = cellValue;
+    if(cellFormula) cellObject.value = cellFormula;
+
+    const cellType = cellElement.getAttribute('t');
+    const cellStyle = cellElement.getAttribute('s');
+    
+    if(cellType) cellObject.format = {type: cellType === 's' ? 'string' : null, style: cellStyle};
+    if(cellType === 's') {
+      cellObject.value = this.sharedStrings.getIndexString(Number(cellValue));
+      cellObject.formula = cellFormula!;
+      cellObject.format = {type: 'string', style: cellStyle}
+    } else {
+      cellObject.formula = cellFormula!;
+      cellObject.format = {type: null, style: cellStyle};
+    }
+
+    return cellObject;
+  }
+
+  public getCell (cellRef: string): CellObject | undefined {
+      const cell = this.cellsMap.get(cellRef);
+      if(!cell) return undefined;
+
+      const cellObject = this.cellElementToObject(cell);
+      return cellObject
+  }
+
+  public getRange (startCellRef?: string, endCellRef?: string): Array<Array<CellObject | undefined>> {
     console.log('Retrieving worksheet range values');
+    const cellObjectRange: CellObject[][] = [];
 
-    const output: string[][] = [];
+    const {rowIndex: startRowIndex, columnIndex: startColumnIndex} = 
+      startCellRef ? ExcelColumnConverter.cellRefToIndex(startCellRef) :
+      {rowIndex: 1, columnIndex: 1}
+    ;
 
-    for(const [key, cell] of this.cellsMap) {
-      const {RowIndex, ColumnIndex} = ExcelColumnConverter.cellRefToIndex(key);
-      const rowNo = RowIndex - 1;
-      const columnNo = ColumnIndex - 1;
+    const {rowIndex: endRowIndex, columnIndex: endColumnIndex} = 
+      endCellRef ? ExcelColumnConverter.cellRefToIndex(endCellRef) : 
+      {rowIndex: 999999999, columnIndex: 999999999}
+    ;
 
-      const valueElement = cell.querySelector('v');
-      if(!valueElement?.textContent) continue;
+    for(const [cellRef, cellElement] of this.cellsMap) {
+      const {rowIndex, columnIndex} = ExcelColumnConverter.cellRefToIndex(cellRef);
 
-      let cellValue = valueElement.textContent;
+      if (
+        rowIndex < startRowIndex ||
+        rowIndex > endRowIndex && 
+        columnIndex < startColumnIndex && 
+        columnIndex > endColumnIndex
+      ) continue;
 
-      const cellType = cell.getAttribute('t');
-      if(cellType === 's') cellValue = this.sharedStrings.getIndexString(Number(cellValue));
+      const rowNo = rowIndex - startRowIndex;
+      const columnNo = columnIndex - startColumnIndex;
 
-      if(!output[rowNo]) output[rowNo] = [];
-      output[rowNo][columnNo] = cellValue;
+      const cellObject = this.cellElementToObject(cellElement);
+      if(!cellObjectRange[rowNo]) cellObjectRange[rowNo] = [];
+      cellObjectRange[rowNo][columnNo] = cellObject
     }
-    return output;
+    return cellObjectRange;
   }
-
-  public getRangeFormulas (): string[][] {
-    console.log('Retrieving worksheet range formulas');
-
-    const output: string[][] = [];
-
-    for(const [key, cell] of this.cellsMap) {
-      const {RowIndex, ColumnIndex} = ExcelColumnConverter.cellRefToIndex(key);
-      const rowNo = RowIndex - 1;
-      const columnNo = ColumnIndex - 1;
-
-      const formulaElement = cell.querySelector('f');
-      if(!formulaElement?.textContent) continue;
-
-      const cellFormula = formulaElement.textContent;
-
-      if(!output[rowNo]) output[rowNo] = [];
-      output[rowNo][columnNo] = cellFormula;
-    }
-    return output;
-  }
-
 
   public toString(): string {
     return new XMLSerializer().serializeToString(this.xmlDocument);
