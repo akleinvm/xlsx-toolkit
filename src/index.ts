@@ -1,4 +1,4 @@
 import ExcelDocument from "./classes/ExcelDocument";
 import ExcelColumnConverter from "./classes/ExcelColumnConverter";
 
-export default ExcelDocument;
+export {ExcelDocument, ExcelColumnConverter};
