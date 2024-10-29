@@ -78,7 +78,7 @@ export default class ExcelWorksheet {
     if(cellStyle) cellElement.setAttribute('s', cellStyle);
 
     const cellType = cell.format?.type;
-    if(cellType) cellElement.setAttribute('t', 's');
+    if(cellType === 'string') cellElement.setAttribute('t', 's');
       
     const cellChildren: Element[] = [];
     
@@ -125,23 +125,22 @@ export default class ExcelWorksheet {
 
     const cellValue = cellElement.querySelector('v')?.textContent;
     const cellFormula = cellElement.querySelector('f')?.textContent;
+    const cellType = cellElement.getAttribute('t');
+    const cellStyle = cellElement.getAttribute('s');
 
-    if(!cellValue && !cellFormula) return cellObject;
+    if(!cellValue && !cellFormula && !cellType && !cellStyle) return cellObject;
     
     if(cellValue) cellObject.value = cellValue;
     if(cellFormula) cellObject.value = cellFormula;
-
-    const cellType = cellElement.getAttribute('t');
-    const cellStyle = cellElement.getAttribute('s');
     
-    if(cellType) cellObject.format = {type: cellType === 's' ? 'string' : null, style: cellStyle};
+    if(cellType) cellObject.format = {type: cellType === 's' ? 'string' : 'number', style: cellStyle};
     if(cellType === 's') {
       cellObject.value = this.sharedStrings.getIndexString(Number(cellValue));
       cellObject.formula = cellFormula!;
       cellObject.format = {type: 'string', style: cellStyle}
     } else {
       cellObject.formula = cellFormula!;
-      cellObject.format = {type: null, style: cellStyle};
+      cellObject.format = {type: 'number', style: cellStyle};
     }
 
     return cellObject;

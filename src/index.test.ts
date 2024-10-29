@@ -83,7 +83,7 @@ test("Update XLSX worksheet - Fillup formulas", async () => {
 
   
   const templateReportWorksheet = await templateWorkbook.getWorksheet(1);
-  const templateReportRange = templateReportWorksheet.getRange('A3', 'J3')[0];
+  const templateReportRange = templateReportWorksheet.getRange('A3', 'J3')[0]; console.log(JSON.stringify(templateReportRange));
 
   const reportRange: CellObject[][] = [];
   for (let i=0; i< previousSourceRange.length; i++) {
