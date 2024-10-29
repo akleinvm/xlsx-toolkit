@@ -1,6 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { JSDOM } from 'jsdom';
-import ExcelDocument from "./index";
+import {ExcelDocument} from "./index";
 import {readFileSync} from 'fs';
 import fs from 'fs';
 import ExcelWorksheet from "./classes/ExcelWorksheet";
@@ -16,10 +16,6 @@ let latestSourceWorksheet: ExcelWorksheet;
 let latestSourceRange: (CellObject | undefined)[][];
 
 let templateWorkbook: ExcelDocument;
-let templateWorksheet1: ExcelWorksheet;
-let templateWorksheet2: ExcelWorksheet;
-let templateWorksheet3: ExcelWorksheet;
-let templateWorksheet4: ExcelWorksheet;
 let templateWorksheet5: ExcelWorksheet;
 let templateWorksheet6: ExcelWorksheet;
 
@@ -80,10 +76,74 @@ test("Update XLSX worksheet - Fillup formulas", async () => {
     }
   };
 
+  await updateFormula(5);
   await updateFormula(4);
   await updateFormula(3);
   await updateFormula(2);
-  await updateFormula(1);
+
+  
+  const templateReportWorksheet = await templateWorkbook.getWorksheet(1);
+  const templateReportRange = templateReportWorksheet.getRange('A3', 'J3')[0];
+
+  const reportRange: CellObject[][] = [];
+  for (let i=0; i< previousSourceRange.length; i++) {
+      const previousItem = previousSourceRange[i]; 
+      const previousF1 = Number(previousItem[24]?.value);
+      const previousWeight = Number(previousItem[48]?.value); 
+
+      const latestItem = latestSourceRange[i];
+      const latestF1 = Number(latestItem[24]?.value);
+      const latestWeight = Number(latestItem[48]?.value);
+      console
+      if(
+          !isNaN(previousF1) && !isNaN(latestF1) &&
+          Math.abs(previousF1 - latestF1) >= 300
+      ) {
+          const itemNoValue = previousItem[0]?.value ?? ''; console.log(previousF1);
+          const tagNoValue = previousItem[1]?.value ?? ''; 
+          const valveTypeValue = previousItem[4]?.value ?? ''; 
+          const partNameValue = previousItem[5]?.value ?? ''; 
+          const parameterValue = "F1";
+          const descriptionValue = "The height has changed significantly from previous data. Please make sure that the height is correct.";
+
+          const rowCells: CellObject[] = [];
+          rowCells.push({value: itemNoValue, format: templateReportRange[0]?.format});
+          rowCells.push({value: tagNoValue, format: templateReportRange[1]?.format});
+          rowCells.push({value: valveTypeValue, format: templateReportRange[2]?.format});
+          rowCells.push({value: partNameValue, format: templateReportRange[3]?.format});
+          rowCells.push({value: parameterValue, format: templateReportRange[4]?.format});
+          rowCells.push({value: previousF1.toString(), format: templateReportRange[5]?.format});
+          rowCells.push({value: latestF1.toString(), format: templateReportRange[6]?.format});
+          rowCells.push({value: descriptionValue, format: templateReportRange[7]?.format});
+
+          reportRange.push(rowCells);
+      }
+
+      if(
+          !isNaN(previousWeight) && !isNaN(latestWeight) &&
+          Math.abs(previousWeight - latestWeight) >= 500
+      ) {
+          const itemNoValue = previousItem[0]?.value ?? '';
+          const tagNoValue = previousItem[1]?.value ?? '';
+          const valveTypeValue = previousItem[4]?.value ?? '';
+          const partNameValue = previousItem[5]?.value ?? '';
+          const parameterValue = "Weight";
+          const descriptionValue = "The weight has changed significantly from previous data. Please make sure that the weight is correct.";
+
+          const rowCells: CellObject[] = [];
+          rowCells.push({value: itemNoValue, format: templateReportRange[0]?.format});
+          rowCells.push({value: tagNoValue, format: templateReportRange[1]?.format});
+          rowCells.push({value: valveTypeValue, format: templateReportRange[2]?.format});
+          rowCells.push({value: partNameValue, format: templateReportRange[3]?.format});
+          rowCells.push({value: parameterValue, format: templateReportRange[4]?.format});
+          rowCells.push({value: previousWeight.toString(), format: templateReportRange[5]?.format});
+          rowCells.push({value: latestWeight.toString(), format: templateReportRange[6]?.format});
+          rowCells.push({value: descriptionValue, format: templateReportRange[7]?.format});
+
+          reportRange.push(rowCells);
+      }
+  }
+  templateReportWorksheet.updateRange(reportRange, "A3");
   
 });
 
