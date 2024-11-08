@@ -9,6 +9,7 @@ export default class ExcelWorksheet {
   private sheetDataElement!: Element;
   private sharedStrings!: ExcelSharedStrings;
 
+  public columns!: Array<{min: number, max: number, style: string | null, element: HTMLTableColElement}>;
   public rowsMap!: Map<number, Element>;
   public cellsMap!: Map<string, Element>;
 
@@ -23,9 +24,21 @@ export default class ExcelWorksheet {
     this.namespace = this.worksheetElement.getAttribute('xmlns') ?? "";
 
     this.sheetDataElement = this.xmlDocument.getElementsByTagName("sheetData")[0];
+
+    this.columns = [];
+    const columns = this.xmlDocument.querySelector('cols')?.querySelectorAll('col');
+    if(columns != undefined) {
+      for(let i=0; i<columns?.length; i++) {
+        const element = columns[i];
+        const min = Number(element.getAttribute('min'));
+        const max = Number(element.getAttribute('max'));
+        const style = element.getAttribute('style');
+        this.columns.push({min, max, style, element});
+      }
+    }
+
     this.rowsMap = new Map();
     const rows = this.sheetDataElement.querySelectorAll('row');
-
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNo = Number(row.getAttribute('r'));
@@ -34,7 +47,6 @@ export default class ExcelWorksheet {
 
     this.cellsMap = new Map();
     const cells = this.sheetDataElement.querySelectorAll('c');
-
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       const cellRef = cell.getAttribute('r');
@@ -74,10 +86,10 @@ export default class ExcelWorksheet {
       cellElement.setAttribute('r', cellReference);
     }
 
-    const cellStyle = cell.format?.style;
-    if(cellStyle) cellElement.setAttribute('s', cellStyle);
+    const cellStyle = cell.style;
+    if(cellStyle != undefined) cellElement.setAttribute('s', cellStyle);
 
-    const cellType = cell.format?.type;
+    const cellType = cell.type;
     if(cellType === 'string') cellElement.setAttribute('t', 's');
       
     const cellChildren: Element[] = [];
@@ -101,7 +113,7 @@ export default class ExcelWorksheet {
     this.cellsMap.set(cellReference, cellElement);
   }
 
-  public updateRange (cellObjects: (CellObject | undefined)[][], startCellRef: string = 'A1'): void {
+  public updateRange (cellObjects: (CellObject | null)[][], startCellRef: string = 'A1'): void {
     const {rowIndex, columnIndex} = ExcelColumnConverter.cellRefToIndex(startCellRef);
 
     for (let rowNo = 0; rowNo < cellObjects.length; rowNo++) {
@@ -126,21 +138,28 @@ export default class ExcelWorksheet {
     const cellValue = cellElement.querySelector('v')?.textContent;
     const cellFormula = cellElement.querySelector('f')?.textContent;
     const cellType = cellElement.getAttribute('t');
-    const cellStyle = cellElement.getAttribute('s');
+    let cellStyle = cellElement.getAttribute('s');
+    if(cellStyle === null && this.columns.length > 0) {
+      const cellRef = cellElement.getAttribute('r');
+      if(!cellRef) throw new Error('Invalid blank cell reference detected');
+      
+      const {rowIndex, columnIndex} = ExcelColumnConverter.cellRefToIndex(cellRef);
+      const column = this.columns.find(({min, max, style, element}) => {
+        return columnIndex >= min && columnIndex <= max
+      });
+
+      if(column) cellStyle = column.style; //console.log(cellStyle);
+    }
 
     if(!cellValue && !cellFormula && !cellType && !cellStyle) return cellObject;
     
     if(cellValue) cellObject.value = cellValue;
-    if(cellFormula) cellObject.value = cellFormula;
-    
-    if(cellType) cellObject.format = {type: cellType === 's' ? 'string' : 'number', style: cellStyle};
+    if(cellFormula) cellObject.formula = cellFormula;
+    if(cellStyle) cellObject.style = cellStyle;
+    cellObject.type = cellType === 's' ? 'string' : 'number';
+
     if(cellType === 's') {
       cellObject.value = this.sharedStrings.getIndexString(Number(cellValue));
-      cellObject.formula = cellFormula!;
-      cellObject.format = {type: 'string', style: cellStyle}
-    } else {
-      cellObject.formula = cellFormula!;
-      cellObject.format = {type: 'number', style: cellStyle};
     }
 
     return cellObject;
@@ -154,9 +173,9 @@ export default class ExcelWorksheet {
       return cellObject
   }
 
-  public getRange (startCellRef?: string, endCellRef?: string): Array<Array<CellObject | undefined>> {
+  public getRange (startCellRef?: string, endCellRef?: string): Array<Array<CellObject | null>> {
     console.log('Retrieving worksheet range values');
-    const cellObjectRange: CellObject[][] = [];
+    const cellObjectRange: (CellObject | null)[][] = [];
 
     const {rowIndex: startRowIndex, columnIndex: startColumnIndex} = 
       startCellRef ? ExcelColumnConverter.cellRefToIndex(startCellRef) :
@@ -181,10 +200,29 @@ export default class ExcelWorksheet {
       const rowNo = rowIndex - startRowIndex;
       const columnNo = columnIndex - startColumnIndex;
 
-      const cellObject = this.cellElementToObject(cellElement);
+      const cellObject = this.cellElementToObject(cellElement); 
       if(!cellObjectRange[rowNo]) cellObjectRange[rowNo] = [];
       cellObjectRange[rowNo][columnNo] = cellObject
     }
+/*
+    for (let rowNo=0; rowNo<=cellObjectRange.length; rowNo++) {
+      const row = cellObjectRange[rowNo];
+      if(!row || row.length === 0) continue;
+
+      for (let columnNo=0; columnNo<=row.length; columnNo++) {
+        const cellObject = row[columnNo];
+        if(cellObject) continue;
+
+        const columnIndex = startColumnIndex + columnNo;
+
+        const column = this.columns.find(({min, max, style, element}) => {
+          return columnIndex >= min && columnIndex <= max
+        });
+  
+        if(column) cellObjectRange[rowNo][columnNo] = {type: "string", style: column.style};
+      }
+    }*/
+
     return cellObjectRange;
   }
 
