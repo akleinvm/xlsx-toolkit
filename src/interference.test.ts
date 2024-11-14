@@ -44,12 +44,10 @@ const applyRangeFormat = (range: (CellObject | null)[][], reference: (CellObject
   for(let rowNo=0; rowNo<range.length; rowNo++) {
     const row = range[rowNo];
     for(let columnNo=0; columnNo<row.length; columnNo++) {
-      const type = reference[columnNo]?.type;
       const style = reference[columnNo]?.style;
 
       if(row[columnNo] === undefined) row[columnNo] = {};
 
-      row[columnNo]!.type = type;
       row[columnNo]!.style = style;
     }
   }
@@ -79,18 +77,18 @@ test("Read XLSX worksheet", async () => {
   for(let rowNo=1; rowNo<ffRange.length; rowNo++) {
     const row = ffRange[rowNo];
     if(!row) continue;
-    const [idCode, valveType, parameter, assemblyType, connectionType, inlet, outlet, connectionSize] = row.map((content) => content?.value ?? '')
+    const [idCode, valveType, parameter, assemblyType, connectionType, inlet, outlet] = row.map((content) => content?.value);
     const dimension = {};
     for(let columnNo=8; columnNo<14; columnNo++) {
-      const columnName = ffRange[0][columnNo]?.value?.replaceAll('#','');
+      const columnName = ffRange[0][columnNo]?.value?.toString().replaceAll('#','');
       if(!columnName) throw new Error('Invalid FF dimension name');
       dimension[columnName] = Number(row[columnNo]?.value)
     }
     ffDimensionTable.push({
-      valveType: valveType, 
-      parameter: parameter, 
-      assemblyType: assemblyType, 
-      connectionType: connectionType, 
+      valveType: valveType === undefined ? '' :  valveType.toString(),
+      parameter: parameter === undefined ? '' :  parameter.toString(),
+      assemblyType: assemblyType === undefined ? '' :  assemblyType.toString(),
+      connectionType: connectionType === undefined ? '' :  connectionType.toString(), 
       inlet: Number(inlet), 
       outlet: Number(outlet), 
       dimensions: dimension
@@ -107,7 +105,7 @@ test("Read XLSX worksheet", async () => {
     for(let columnNo=2; columnNo<8; columnNo++) {
       const columnName = flangeRange[1][columnNo]?.value;
       if(!columnName) throw new Error('Invalid flange rating name');
-      rating[columnName] = Number(row[columnNo]?.value)
+      rating[columnName.toString()] = Number(row[columnNo]?.value)
     }
     flangeTable.push({
       nps: nps, 
@@ -134,21 +132,6 @@ test("Read XLSX worksheet", async () => {
 });
 
 test("Update XLSX worksheet - Fill up values", async () => {
-  const applyRangeFormat = (range: (CellObject | null)[][], reference: (CellObject | null)[]) => {
-    for(let rowNo=0; rowNo<range.length; rowNo++) {
-      const row = range[rowNo];
-      for(let columnNo=0; columnNo<row.length; columnNo++) {
-        const type = reference[columnNo]?.type;
-        const style = reference[columnNo]?.style;
-  
-        if(row[columnNo] === undefined) row[columnNo] = {};
-
-        row[columnNo]!.type = type;
-        row[columnNo]!.style = style;
-      }
-    }
-  };  
-
   const dimensionWorksheet = await templateWorkbook.getWorksheet(1);
   const dimensionWorksheetFormat = dimensionWorksheet.getRange('B6', 'BJ6')[0]; 
   applyRangeFormat(sourceRange, dimensionWorksheetFormat); //console.log(JSON.stringify(sourceRange));
@@ -168,22 +151,22 @@ test("Update XLSX worksheet - Fill up report", async () => {
       const valveType = row[4]?.value;
       const partName = row[5]?.value;
 
-      const A = Number(row[17]?.value); 
-      const B = Number(row[18]?.value);
-      const L = Number(row[21]?.value);
-      const F1 = Number(row[24]?.value);
-      const F2 = Number(row[25]?.value);
-      const G = Number(row[26]?.value);
-      const PS2 = Number(row[34]?.value);
-      const PS4 = Number(row[36]?.value);
-      const HW2 = Number(row[46]?.value);
-      const HW3 = Number(row[47]?.value);
+      const A = Number(row[17]?.value) || 0; 
+      const B = Number(row[18]?.value) || 0; 
+      const L = Number(row[21]?.value) || 0; 
+      const F1 = Number(row[24]?.value) || 0; 
+      const F2 = Number(row[25]?.value) || 0; 
+      const G = Number(row[26]?.value) || 0; 
+      const PS2 = Number(row[34]?.value) || 0; 
+      const PS4 = Number(row[36]?.value) || 0; 
+      const HW2 = Number(row[46]?.value) || 0; 
+      const HW3 = Number(row[47]?.value) || 0; 
 
       const connectionType = row[11]?.value; 
       const inletSize = Number(row[8]?.value); 
       const outletSize = Number(row[9]?.value); 
       const measuringStandard = row[10]?.value === 'in' ? 'nps' : row[10]?.value === 'mm' ? 'dn' : '';
-      const rating = Number(row[7]?.value?.replaceAll('#', '')); 
+      const rating = Number(row[7]?.value?.toString().replaceAll('#', '')); 
 
       let ffDimension: number | undefined;
       if(connectionType && !isNaN(inletSize) && !isNaN(outletSize)) ffDimension = ffDimensionTable.find((dimension) => {
@@ -204,54 +187,54 @@ test("Update XLSX worksheet - Fill up report", async () => {
       })?.outerDiameterMM;
 
       //console.log(measuringStandard);
-      console.log(`item:${item} tagNo:${tagNo} valveType:${valveType} partName:${partName} A:${A} B:${B} L:${L} F1:${F1} F2:${F2} G:${G} PS2:${PS2} PS4:${PS4} HW2:${HW2} HW3:${HW3} connectionType:${connectionType} inletSize:${inletSize} outletSize:${outletSize} rating:${rating}`)
-      console.log(`ffDimension:${ffDimension} flangeRating:${flangeRating} pipeOuterDiameter:${pipeOuterDiameter}`);
+      //console.log(`item:${item} tagNo:${tagNo} valveType:${valveType} partName:${partName} A:${A} B:${B} L:${L} F1:${F1} F2:${F2} G:${G} PS2:${PS2} PS4:${PS4} HW2:${HW2} HW3:${HW3} connectionType:${connectionType} inletSize:${inletSize} outletSize:${outletSize} rating:${rating}`)
+      //console.log(`ffDimension:${ffDimension} flangeRating:${flangeRating} pipeOuterDiameter:${pipeOuterDiameter}`);
       //console.log(JSON.stringify(flangeTable.slice(0,3)));
 
-      const checkArray: {checkItemNo: string, description: string, parameter: string, condition: boolean}[] = [
+      const checkArray: {checkItemNo: number, description: string, parameter: string, condition: boolean}[] = [
         {
-          checkItemNo: '1',
+          checkItemNo: 1,
           description: "F-to-F dimension must be rechecked.",
           parameter: "A",
           condition: !!ffDimension && (!isNaN(A) && !isNaN(ffDimension) && !(Math.abs(A - ffDimension) < 1))
         },
         {
-          checkItemNo: '2',
+          checkItemNo: 2,
           description: "Positioner height must be rechecked.",
           parameter: "PS2",
-          condition: !!valveType && !isNaN(F1) && !isNaN(F2) && !isNaN(PS2) && !isNaN(PS4) && (
-            ['I', 'II', 'III'].includes(valveType) && !(Math.abs(F1*0.55-PS2) < 250 && PS2-PS4 > 250) || 
+          condition: !!valveType && valveType != 'IV' && (
+            ['I', 'II', 'III'].includes(valveType.toString()) && !(Math.abs(F1*0.55-PS2) < 250 && PS2-PS4 > 250) || 
             valveType === 'V' && !(Math.abs(F2-(PS2-PS4)/2) < 250)
           )
         },
         {
-          checkItemNo: '3',
+          checkItemNo: 3,
           description: 'HW height must be rechecked.',
           parameter: "HW2",
-          condition: !!valveType && !isNaN(F1) && !isNaN(F2) && !isNaN(HW2) && !isNaN(HW3) && (
-            ['I', 'II', 'III'].includes(valveType) && !(Math.abs(F1*0.55-HW2) < 250 && HW2-HW3/2 > 250) || 
+          condition: !!valveType && valveType != 'IV' && (
+            ['I', 'II', 'III'].includes(valveType.toString()) && !(Math.abs(F1*0.55-HW2) < 250 && HW2-HW3/2 > 250) || 
             valveType === 'V' && !(Math.abs(F2-HW2) < 250)
         )
         },
         {
-          checkItemNo: '4',
+          checkItemNo: 4,
           description: "There is interference or very little clearance between the actuator and process piping.",
           parameter: "G (or F2)",
-          condition: !!valveType && !!partName && !isNaN(F2) && !isNaN(G) && !!flangeRating && !isNaN(flangeRating) && 
-          ['Ball', 'Butterfly'].includes(partName) && !(F2-G/2-flangeRating/2 > 100)
+          condition: !!valveType && !!partName && valveType != 'IV' && !!flangeRating && !isNaN(flangeRating) && 
+          ['Ball', 'Butterfly'].includes(partName.toString()) && !(F2-G/2-flangeRating/2 > 100)
         },
         {
-          checkItemNo: '5',
+          checkItemNo: 5,
           description: "There is interference or very little clearance between the HW and process piping",
           parameter: "HW3 (or F2)",
-          condition: !!valveType && !!partName && !isNaN(F2) && !isNaN(HW3) && !!pipeOuterDiameter && !isNaN(pipeOuterDiameter) && 
-          ['Ball', 'Butterfly'].includes(partName) && !(F2-HW3/2-pipeOuterDiameter/2 > 100)
+          condition: !!valveType && !!partName && valveType != 'IV' && !!pipeOuterDiameter && !isNaN(pipeOuterDiameter) && 
+          ['Ball', 'Butterfly'].includes(partName.toString()) && !(F2-HW3/2-pipeOuterDiameter/2 > 100)
         },
         {
-          checkItemNo: '6',
+          checkItemNo: 6,
           description: "Support legs too short.",
           parameter: "L (or B)",
-          condition: !!valveType && partName === 'Ball' && !isNaN(B) && !isNaN(L) && !(B-L/2 > 0)
+          condition: !!valveType && partName === 'Ball' && valveType != 'IV' && !(B-L/2 > 0)
         }
       ]
       
@@ -261,7 +244,7 @@ test("Update XLSX worksheet - Fill up report", async () => {
           const rowItems =[item, tagNo, valveType, partName, checkItemNo, parameter, description];
 
           for(let i=0; i<rowItems.length; i++) {
-            rowCells.push({value: rowItems[i], type: 'string'});
+            rowCells.push({value: rowItems[i]});
           }
 
           reportRange.push(rowCells);
