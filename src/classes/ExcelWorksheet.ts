@@ -88,23 +88,45 @@ export default class ExcelWorksheet {
 
     const cellStyle = cell.style;
     if(cellStyle != undefined) cellElement.setAttribute('s', cellStyle);
-
-    const cellType = cell.type;
-    if(cellType === 'string') cellElement.setAttribute('t', 's');
       
     const cellChildren: Element[] = [];
     
-    if(cell.formula) {
-      const formula = cell.formula;
+    if(cell.formula != undefined) {
+      const formulaValue = cell.formula.value;
       const formulaElement = this.xmlDocument.createElementNS(this.namespace, 'f');
-      formulaElement.textContent = formula;
+      formulaElement.textContent = formulaValue;
+
+      const formulaType = cell.formula.type;
+      if(formulaType === 'string') {
+        cellElement.setAttribute('t', 's');
+      } else if (formulaType === 'boolean') {
+        cellElement.setAttribute('t', 'b');
+      } else if (formulaType != 'number') {
+        throw new Error('Invalid formula type detected: ' + formulaType);
+      }
+
       cellChildren.push(formulaElement);
-    } else if (cell.value) {
-      let value = cell.value;
-      if(cellType === 'string') value = this.sharedStrings.getStringIndex(cell.value).toString();
+
+    } else if (cell.value != undefined) {
+      let value: string;
+
+      if(typeof cell.value === 'string') {
+        value = this.sharedStrings.getStringIndex(cell.value).toString(); 
+        cellElement.setAttribute('t', 's');
+      } else if (typeof cell.value === 'boolean') {
+        value = cell.value ? '1' : '0';
+        cellElement.setAttribute('t', 'b');
+      } else if (typeof cell.value === 'number') {
+        value = cell.value.toString()
+      } else {
+        throw new Error('Invalid cell type: ' + typeof cell.value)
+      }
+      
       const valueElement = this.xmlDocument.createElementNS(this.namespace, 'v');
-      valueElement.textContent = value;
+      valueElement.textContent = value; //console.log(this.sharedStrings.getIndexString(Number(valueElement.textContent)))
       cellChildren.push(valueElement);
+    } else {
+      //console.log('Empty cell content: ' + JSON.stringify(cell))
     }
       
 
@@ -138,6 +160,7 @@ export default class ExcelWorksheet {
     const cellValue = cellElement.querySelector('v')?.textContent;
     const cellFormula = cellElement.querySelector('f')?.textContent;
     const cellType = cellElement.getAttribute('t');
+
     let cellStyle = cellElement.getAttribute('s');
     if(cellStyle === null && this.columns.length > 0) {
       const cellRef = cellElement.getAttribute('r');
@@ -148,18 +171,24 @@ export default class ExcelWorksheet {
         return columnIndex >= min && columnIndex <= max
       });
 
-      if(column) cellStyle = column.style; //console.log(cellStyle);
+      if(column) cellStyle = column.style; 
     }
 
     if(!cellValue && !cellFormula && !cellType && !cellStyle) return cellObject;
     
-    if(cellValue) cellObject.value = cellValue;
-    if(cellFormula) cellObject.formula = cellFormula;
+    if(cellFormula) cellObject.formula = {value: cellFormula, type: cellType === 's' ? 'string' : cellType === 'b' ? 'boolean' : 'number'};
     if(cellStyle) cellObject.style = cellStyle;
-    cellObject.type = cellType === 's' ? 'string' : 'number';
 
-    if(cellType === 's') {
+    if(cellType === 's' || cellType === 'str') {
       cellObject.value = this.sharedStrings.getIndexString(Number(cellValue));
+    } else if (cellType === 'b') {
+      cellObject.value = cellValue === '1' ? true : cellValue === '0' ? false : undefined;
+    } else if (!cellType) {
+      if(cellValue != null || cellValue != undefined) cellObject.value = Number(cellValue)
+    } else if (cellType === 'e') {
+      true;
+    } else {
+      throw new Error('Invalid cell detected: ' + new XMLSerializer().serializeToString(cellElement));
     }
 
     return cellObject;
