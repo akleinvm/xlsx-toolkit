@@ -117,7 +117,8 @@ export default class ExcelWorksheet {
         value = cell.value ? '1' : '0';
         cellElement.setAttribute('t', 'b');
       } else if (typeof cell.value === 'number') {
-        value = cell.value.toString()
+        value = cell.value.toString();
+        cellElement.removeAttribute('t');
       } else {
         throw new Error('Invalid cell type: ' + typeof cell.value)
       }
