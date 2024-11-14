@@ -73,8 +73,6 @@ export default class ExcelDocument {
 
         console.log('Updating sharedString.xml...');
         this.zipFiles.file("xl/sharedStrings.xml", this.sharedStrings.toString());  
-        //console.log(JSON.stringify(this.sharedStrings.sharedStringArray));
-        //console.log(this.sharedStrings.toString())
 
         console.log('Updating styles.xml...');
         this.zipFiles.file("xl/styles.xml", this.styles.toString());
