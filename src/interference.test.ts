@@ -58,7 +58,7 @@ test("Load XLSX file", async () => {
   sourceWorkbook = new ExcelDocument();
   await sourceWorkbook.loadXLSX(sourcefile);
 
-  const templatefile = readFileSync('./test/Interference Check R1a.xlsx');
+  const templatefile = readFileSync('./test/Interference report template.xlsx');
   templateWorkbook = new ExcelDocument();
   await templateWorkbook.loadXLSX(templatefile);
   
@@ -78,7 +78,7 @@ test("Read XLSX worksheet", async () => {
     const row = ffRange[rowNo];
     if(!row) continue;
     const [idCode, valveType, parameter, assemblyType, connectionType, inlet, outlet] = row.map((content) => content?.value);
-    const dimension = {};
+    const dimension: {[key: string]: number} = {};
     for(let columnNo=8; columnNo<14; columnNo++) {
       const columnName = ffRange[0][columnNo]?.value?.toString().replaceAll('#','');
       if(!columnName) throw new Error('Invalid FF dimension name');
@@ -101,7 +101,7 @@ test("Read XLSX worksheet", async () => {
     const row = flangeRange[rowNo];
     if(!row) continue;
     const [nps, dn] = row.map((content) => Number(content?.value))
-    const rating = {};
+    const rating: {[key: string]: number} = {};
     for(let columnNo=2; columnNo<8; columnNo++) {
       const columnName = flangeRange[1][columnNo]?.value;
       if(!columnName) throw new Error('Invalid flange rating name');
@@ -177,12 +177,12 @@ test("Update XLSX worksheet - Fill up report", async () => {
       })?.dimensions[rating];
 
       let flangeRating: number | undefined;
-      if(!isNaN(outletSize)) flangeRating = flangeTable.find((flange) => {
+      if(!isNaN(outletSize) && measuringStandard != '') flangeRating = flangeTable.find((flange) => {
         return flange[measuringStandard] === outletSize;
       })?.rating[rating];
 
       let pipeOuterDiameter: number | undefined;
-      if(!isNaN(outletSize)) pipeOuterDiameter = pipeTable.find((pipe) => {
+      if(!isNaN(outletSize) && measuringStandard != '') pipeOuterDiameter = pipeTable.find((pipe) => {
         return pipe[measuringStandard] === outletSize;
       })?.outerDiameterMM;
 

@@ -64,12 +64,12 @@ export default class ExcelWorksheet {
       rowElement.setAttribute('r', rowNo.toString());
       rowElement.setAttribute('spans', `${1}:${columnNo}`);
 
-      const nextSibling = Array.from(this.rowsMap).find(([key]) => key > rowNo)?.[1];
+      const nextRowSibling = Array.from(this.rowsMap).find(([key]) => key > rowNo)?.[1];
       
-      if(!nextSibling) {
+      if(!nextRowSibling) {
         this.sheetDataElement.appendChild(rowElement);
       } else {
-        this.sheetDataElement.insertBefore(rowElement, nextSibling);
+        this.sheetDataElement.insertBefore(rowElement, nextRowSibling);
       }
       
       this.rowsMap.set(rowNo, rowElement);
@@ -130,10 +130,27 @@ export default class ExcelWorksheet {
       //console.log('Empty cell content: ' + JSON.stringify(cell))
     }
       
-
     cellElement.replaceChildren(...cellChildren);
-    rowElement.appendChild(cellElement);
-    this.cellsMap.set(cellReference, cellElement);
+
+    const cellSiblings = this.rowsMap.get(rowNo)?.querySelectorAll('c');
+    if(!cellSiblings) {
+      rowElement.appendChild(cellElement); 
+      return
+    }
+
+    const nextCellSibling = Array.from(cellSiblings).find(cell => {
+      const cellRef = cell.getAttribute('r');
+      if(!cellRef) throw new Error('Invalid cell ref detected.');
+      const {columnIndex} = ExcelColumnConverter.cellRefToIndex(cellRef);
+      return columnIndex > columnNo
+    })
+
+    if(!nextCellSibling) {
+      rowElement.appendChild(cellElement);
+    } else {
+      rowElement.insertBefore(cellElement, nextCellSibling);
+    }
+    
   }
 
   public updateRange (cellObjects: (CellObject | null)[][], startCellRef: string = 'A1'): void {

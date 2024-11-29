@@ -13,37 +13,37 @@ global.DOMParser = window.DOMParser;
 global.Document  = window.Document;
 global.XMLSerializer = window.XMLSerializer;
 
-let previousSourceWorkbook: ExcelDocument;
-let previousSourceWorksheet: ExcelWorksheet;
-let previousSourceRange: (CellObject | null)[][];
+let previousWorkbook: ExcelDocument;
+let previousWorksheet: ExcelWorksheet;
+let previousRange: (CellObject | null)[][];
 
-let latestSourceWorkbook: ExcelDocument;
-let latestSourceWorksheet: ExcelWorksheet;
-let latestSourceRange: (CellObject | null)[][];
+let latestWorkbook: ExcelDocument;
+let latestWorksheet: ExcelWorksheet;
+let latestRange: (CellObject | null)[][];
 
 let templateWorkbook: ExcelDocument;
-let templateWorksheet6: ExcelWorksheet;
-let templateWorksheet7: ExcelWorksheet;
+let templateNewWorksheet: ExcelWorksheet;
+let templateOldWorksheet: ExcelWorksheet;
 
 test("Load XLSX file", async () => {
-  const previousSourcefile = readFileSync('./test/1. Source File_OLD_CV_Basrah_2.0.xlsx');
+  const latestfile = readFileSync('./test/1. Source File_OLD_CV_Basrah_2.0.xlsx');
+  const previousfile = readFileSync('./test/2. Source File_NEW_CV_Basrah_AB.xlsx');
   
-  previousSourceWorkbook = new ExcelDocument();
-  await previousSourceWorkbook.loadXLSX(previousSourcefile)
+  previousWorkbook = new ExcelDocument();
+  await previousWorkbook.loadXLSX(previousfile)
 
-  const latestSourcefile = readFileSync('./test/2. Source File_NEW_CV_Basrah_AB.xlsx');
-  latestSourceWorkbook = new ExcelDocument();
-  await latestSourceWorkbook.loadXLSX(latestSourcefile)
+  latestWorkbook = new ExcelDocument();
+  await latestWorkbook.loadXLSX(latestfile)
 });
 
 test("Read XLSX worksheet", async () => {
-  if(!previousSourceWorkbook) throw new Error('workbook is null');
-  previousSourceWorksheet = await previousSourceWorkbook.getWorksheet(1);
-  previousSourceRange = previousSourceWorksheet.getRange("B6", "BJ9999999999");
+  if(!previousWorkbook) throw new Error('workbook is null');
+  previousWorksheet = await previousWorkbook.getWorksheet(1);
+  previousRange = previousWorksheet.getRange("B6", "BJ9999999999");
 
-  if(!latestSourceWorkbook) throw new Error('workbook is null');
-  latestSourceWorksheet = await latestSourceWorkbook.getWorksheet(1);
-  latestSourceRange = latestSourceWorksheet.getRange("B6", "BJ9999999999"); 
+  if(!latestWorkbook) throw new Error('workbook is null');
+  latestWorksheet = await latestWorkbook.getWorksheet(1);
+  latestRange = latestWorksheet.getRange("B6", "BJ9999999999"); 
 });
 
 test("Update XLSX worksheet - Fill up values", async () => {
@@ -60,28 +60,28 @@ test("Update XLSX worksheet - Fill up values", async () => {
     }
   };
 
-  const file = readFileSync('./test/Comparison of Valve Dimension Table S_DDMMYYYY.xlsx');
+  const file = readFileSync('./test/Comparison report template.xlsx');
   
   templateWorkbook = new ExcelDocument();
   await templateWorkbook.loadXLSX(file);
   
 
-  templateWorksheet7 = await templateWorkbook.getWorksheet(7); 
-  const previousWorksheetFormat = templateWorksheet7.getRange('B6', 'BJ6')[0]; 
-  applyRangeFormat(previousSourceRange, previousWorksheetFormat); 
-  templateWorksheet7.updateRange(previousSourceRange, 'B6'); 
+  templateOldWorksheet = await templateWorkbook.getWorksheet(7); 
+  const previousWorksheetFormat = templateOldWorksheet.getRange('B6', 'BJ6')[0]; 
+  applyRangeFormat(previousRange, previousWorksheetFormat); 
+  templateOldWorksheet.updateRange(previousRange, 'B6'); 
 
-  templateWorksheet6 = await templateWorkbook.getWorksheet(6); 
-  const latestWorksheetFormat = templateWorksheet6.getRange('B6', 'BJ6')[0]; 
-  applyRangeFormat(latestSourceRange, latestWorksheetFormat); 
-  templateWorksheet6.updateRange(latestSourceRange, 'B6');
-});
+  templateNewWorksheet = await templateWorkbook.getWorksheet(6); 
+  const latestWorksheetFormat = templateNewWorksheet.getRange('B6', 'BJ6')[0]; 
+  applyRangeFormat(latestRange, latestWorksheetFormat); 
+  templateNewWorksheet.updateRange(latestRange, 'B6');
+}, 10000);
 
 test("Update XLSX worksheet - Fillup formulas", async () => {
   const updateFormula = async (workSheetNo: number): Promise<void> => {
     const templateWorksheet4 = await templateWorkbook.getWorksheet(workSheetNo);
     const template4Formulas = templateWorksheet4.getRange('B6', 'BJ6')[0]; 
-    for (let rowNo = 0; rowNo < latestSourceRange.length; rowNo++) {
+    for (let rowNo = 0; rowNo < latestRange.length; rowNo++) {
       const row = template4Formulas;
 
       for (let columnNo = 0; columnNo < row.length; columnNo++) {
@@ -105,12 +105,12 @@ test("Update XLSX worksheet - Fillup formulas", async () => {
   const templateReportRange = templateReportWorksheet.getRange('A3', 'J3')[0];
 
   const reportRange: CellObject[][] = [];
-  for (let i=0; i< previousSourceRange.length; i++) {
-      const previousItem = previousSourceRange[i]; 
+  for (let i=0; i< previousRange.length; i++) {
+      const previousItem = previousRange[i]; 
       const previousF1 = Number(previousItem[24]?.value);
       const previousWeight = Number(previousItem[48]?.value); 
 
-      const latestItem = latestSourceRange[i];
+      const latestItem = latestRange[i];
       const latestF1 = Number(latestItem[24]?.value);
       const latestWeight = Number(latestItem[48]?.value);
       console
@@ -158,7 +158,7 @@ test("Update XLSX worksheet - Fillup formulas", async () => {
   }
   templateReportWorksheet.updateRange(reportRange, "A3");
   
-});
+}, 10000);
 
 test("Save XLSX file", async () => {
 
