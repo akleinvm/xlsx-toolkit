@@ -54,7 +54,7 @@ const applyRangeFormat = (range: (CellObject | null)[][], reference: (CellObject
 };
 
 test("Load XLSX file", async () => {
-  const sourcefile = readFileSync('./test/1. Source File_OLD_CV_Basrah_2.0.xlsx');
+  const sourcefile = readFileSync('./test/Zuluf_OOV_Dimension_in-VEST1.6_old.xlsx');
   sourceWorkbook = new ExcelDocument();
   await sourceWorkbook.loadXLSX(sourcefile);
 
@@ -161,6 +161,7 @@ test("Update XLSX worksheet - Fill up report", async () => {
       const PS4 = Number(row[36]?.value) || 0; 
       const HW2 = Number(row[46]?.value) || 0; 
       const HW3 = Number(row[47]?.value) || 0; 
+      const assemblyType = row[58]?.value?.toString() || ''; 
 
       const connectionType = row[11]?.value; 
       const inletSize = Number(row[8]?.value); 
@@ -173,7 +174,8 @@ test("Update XLSX worksheet - Fill up report", async () => {
         return dimension.connectionType === connectionType &&
         dimension.valveType === partName &&
         dimension.inlet === inletSize &&
-        dimension.outlet === outletSize
+        dimension.outlet === outletSize &&
+        dimension.assemblyType === assemblyType
       })?.dimensions[rating];
 
       let flangeRating: number | undefined;
@@ -191,47 +193,54 @@ test("Update XLSX worksheet - Fill up report", async () => {
       //console.log(`ffDimension:${ffDimension} flangeRating:${flangeRating} pipeOuterDiameter:${pipeOuterDiameter}`);
       //console.log(JSON.stringify(flangeTable.slice(0,3)));
 
-      const checkArray: {checkItemNo: number, description: string, parameter: string, condition: boolean}[] = [
+      const checkArray: {checkItemNo: string, description: string, parameter: string, condition: boolean}[] = [
         {
-          checkItemNo: 1,
+          checkItemNo: '1',
           description: "F-to-F dimension must be rechecked.",
           parameter: "A",
           condition: !!ffDimension && (!isNaN(A) && !isNaN(ffDimension) && !(Math.abs(A - ffDimension) < 1))
         },
         {
-          checkItemNo: 2,
-          description: "Positioner height must be rechecked.",
+          checkItemNo: '2',
+          description: "Positioner height for Globe, Angle, or 3-Way valve or Accessary Panel height for Ball or Butterfly valve must be rechecked.",
           parameter: "PS2",
           condition: !!valveType && valveType != 'IV' && (
-            ['I', 'II', 'III'].includes(valveType.toString()) && !(Math.abs(F1*0.55-PS2) < 250 && PS2-PS4 > 250) || 
+            ['I', 'II', 'III'].includes(valveType.toString().split(' ')[0]) && !(Math.abs(F1*0.55-PS2) < 250 && PS2-PS4 > 50) || 
             valveType === 'V' && !(Math.abs(F2-(PS2-PS4)/2) < 250)
           )
         },
         {
-          checkItemNo: 3,
+          checkItemNo: '3',
           description: 'HW height must be rechecked.',
           parameter: "HW2",
           condition: !!valveType && valveType != 'IV' && (
-            ['I', 'II', 'III'].includes(valveType.toString()) && !(Math.abs(F1*0.55-HW2) < 250 && HW2-HW3/2 > 250) || 
+            ['I', 'II', 'III'].includes(valveType.toString().split(' ')[0]) && !(Math.abs(F1*0.55-HW2) < 250 && HW2-HW3/2 > 250) || 
             valveType === 'V' && !(Math.abs(F2-HW2) < 250)
         )
         },
         {
-          checkItemNo: 4,
+          checkItemNo: '4a',
           description: "There is interference or very little clearance between the actuator and process piping.",
           parameter: "G (or F2)",
           condition: !!valveType && !!partName && valveType != 'IV' && !!flangeRating && !isNaN(flangeRating) && 
-          ['Ball', 'Butterfly'].includes(partName.toString()) && !(F2-G/2-flangeRating/2 > 100)
+          ['Butterfly'].includes(partName.toString()) && !(F2-G/2-flangeRating/2 > 100)
         },
         {
-          checkItemNo: 5,
+          checkItemNo: '4b',
+          description: "There is interference or very little clearance between the actuator and process piping.",
+          parameter: "G (or F2)",
+          condition: !!valveType && !!partName && valveType != 'IV' && !!flangeRating && !isNaN(flangeRating) && 
+          ['Ball'].includes(partName.toString()) && !(F2-G/2-flangeRating*1.2/2 > 100)
+        },
+        {
+          checkItemNo: '5',
           description: "There is interference or very little clearance between the HW and process piping",
           parameter: "HW3 (or F2)",
           condition: !!valveType && !!partName && valveType != 'IV' && !!pipeOuterDiameter && !isNaN(pipeOuterDiameter) && 
           ['Ball', 'Butterfly'].includes(partName.toString()) && !(F2-HW3/2-pipeOuterDiameter/2 > 100)
         },
         {
-          checkItemNo: 6,
+          checkItemNo: '6',
           description: "Support legs too short.",
           parameter: "L (or B)",
           condition: !!valveType && partName === 'Ball' && valveType != 'IV' && !(B-L/2 > 0)

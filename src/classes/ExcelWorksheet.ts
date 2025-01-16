@@ -7,13 +7,13 @@ export default class ExcelWorksheet {
   private worksheetElement!: Element;
   private namespace!: string;
   private sheetDataElement!: Element;
-  private sharedStrings!: ExcelSharedStrings;
+  private sharedStrings!: ExcelSharedStrings | null | undefined;
 
   public columns!: Array<{min: number, max: number, style: string | null, element: HTMLTableColElement}>;
   public rowsMap!: Map<number, Element>;
   public cellsMap!: Map<string, Element>;
 
-  constructor(sharedStrings: ExcelSharedStrings) {
+  constructor(sharedStrings: ExcelSharedStrings | null | undefined) {
     this.sharedStrings = sharedStrings;
   }
 
@@ -98,7 +98,7 @@ export default class ExcelWorksheet {
 
       const formulaType = cell.formula.type;
       if(formulaType === 'string') {
-        cellElement.setAttribute('t', 's');
+        cellElement.setAttribute('t', this.sharedStrings ? 's' : 'inlineStr');
       } else if (formulaType === 'boolean') {
         cellElement.setAttribute('t', 'b');
       } else if (formulaType != 'number') {
@@ -110,7 +110,11 @@ export default class ExcelWorksheet {
     } else if (cell.value != undefined) {
       let value: string;
 
-      if(typeof cell.value === 'string') {
+      if(typeof cell.value === 'string' && !this.sharedStrings) {
+        value = cell.value.toString();
+        cellElement.setAttribute('t', 'inlineStr');
+      }
+      else if(typeof cell.value === 'string' && this.sharedStrings) {
         value = this.sharedStrings.getStringIndex(cell.value).toString(); 
         cellElement.setAttribute('t', 's');
       } else if (typeof cell.value === 'boolean') {
@@ -123,8 +127,11 @@ export default class ExcelWorksheet {
         throw new Error('Invalid cell type: ' + typeof cell.value)
       }
       
-      const valueElement = this.xmlDocument.createElementNS(this.namespace, 'v');
-      valueElement.textContent = value; //console.log(this.sharedStrings.getIndexString(Number(valueElement.textContent)))
+      const valueElement = this.sharedStrings ? 
+        this.xmlDocument.createElementNS(this.namespace, 'v') :
+        this.xmlDocument.createElementNS(this.namespace, 'is');
+
+      valueElement.innerHTML = this.sharedStrings? value : `<t>${value}</t>`;
       cellChildren.push(valueElement);
     } else {
       //console.log('Empty cell content: ' + JSON.stringify(cell))
@@ -176,6 +183,7 @@ export default class ExcelWorksheet {
     if(!cellElement) return cellObject;
 
     const cellValue = cellElement.querySelector('v')?.textContent;
+    const cellText = cellElement.querySelector('is')?.querySelector('t')?.textContent;
     const cellFormula = cellElement.querySelector('f')?.textContent;
     const cellType = cellElement.getAttribute('t');
 
@@ -197,11 +205,14 @@ export default class ExcelWorksheet {
     if(cellFormula) cellObject.formula = {value: cellFormula, type: cellType === 's' ? 'string' : cellType === 'b' ? 'boolean' : 'number'};
     if(cellStyle) cellObject.style = cellStyle;
 
-    if(cellType === 's' || cellType === 'str') {
+    
+    if(cellType === 'inlineStr') {
+      cellObject.value = cellText ?? '';
+    } else if((cellType === 's' || cellType === 'str') && this.sharedStrings) {
       cellObject.value = this.sharedStrings.getIndexString(Number(cellValue));
     } else if (cellType === 'b') {
       cellObject.value = cellValue === '1' ? true : cellValue === '0' ? false : undefined;
-    } else if (!cellType) {
+    } else if (!cellType || cellType === 'n') {
       if(cellValue != null || cellValue != undefined) cellObject.value = Number(cellValue)
     } else if (cellType === 'e') {
       true;

@@ -5,7 +5,7 @@ import ExcelWorkbook from './ExcelWorkbook';
 import ExcelWorksheet from './ExcelWorksheet';
 
 export default class ExcelDocument {
-    private sharedStrings!: ExcelSharedStrings;
+    private sharedStrings!: ExcelSharedStrings | null | undefined;
     private styles!: ExcelStyles;
     private workbook!: ExcelWorkbook;
     private worksheets!: Map<number, ExcelWorksheet>;
@@ -32,10 +32,14 @@ export default class ExcelDocument {
         console.log('Parsing sharedStrings.xml...');
         this.sharedStrings = new ExcelSharedStrings();
         const fileSharedStrings = this.zipFiles.file('xl/sharedStrings.xml');
-        if(!fileSharedStrings) throw new Error('sharedStrings not found');
-        const xmlSharedStrings = await fileSharedStrings.async('binarystring');
-        if(!xmlSharedStrings) throw new Error('sharedStrings is null or undefined');
-        this.sharedStrings.fromXML(xmlSharedStrings);
+        if(!fileSharedStrings) {
+            console.log('sharedStrings not found')
+        }
+        else {
+            const xmlSharedStrings = await fileSharedStrings.async('binarystring');
+            if(!xmlSharedStrings) throw new Error('sharedStrings is null or undefined');
+            this.sharedStrings.fromXML(xmlSharedStrings)
+        }
 
         console.log('Parsing styles.xml...');
         this.styles = new ExcelStyles();
@@ -71,8 +75,10 @@ export default class ExcelDocument {
     public async saveXLSX (): Promise<ArrayBuffer> {
         if(!this.zipFiles) throw new Error('no file found');
 
-        console.log('Updating sharedString.xml...');
-        this.zipFiles.file("xl/sharedStrings.xml", this.sharedStrings.toString());  
+        if(this.sharedStrings) {
+            console.log('Updating sharedString.xml...');
+            this.zipFiles.file("xl/sharedStrings.xml", this.sharedStrings.toString());
+        }  
 
         console.log('Updating styles.xml...');
         this.zipFiles.file("xl/styles.xml", this.styles.toString());
@@ -86,8 +92,8 @@ export default class ExcelDocument {
 
         return arrayBuffer;
     }
-
+/*
     public getSharedString () {
         return JSON.stringify(this.sharedStrings.sharedStringArray);
-    }
+    }*/
 }
